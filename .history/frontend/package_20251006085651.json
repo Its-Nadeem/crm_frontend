@@ -1,0 +1,37 @@
+{
+  "name": "Clienn CRM",
+  "version": "1.0.0",
+  "description": "A full-stack CRM application for managing leads and automating sales and marketing workflows.",
+  "main": "backend/server.js",
+  "type": "module",
+  "scripts": {
+    "server": "node backend/server.js",
+    "client": "vite",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "start": "node backend/server.js",
+    "build": "vite build",
+    "preview": "vite preview",
+    "seed": "node backend/seeder.js"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.23.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0"
+  }
+}
+
+
+

@@ -1,0 +1,57 @@
+import express from 'express';
+import { protect } from '../middleware/authMiddleware.js';
+import {
+    getSettings,
+    createOrUpdateStage, deleteStage,
+    createOrUpdateCustomField, deleteCustomField,
+    createOrUpdateTeam, deleteTeam,
+    createOrUpdateUser, deleteUser,
+    createOrUpdateLeadScoreRule, deleteLeadScoreRule,
+    createOrUpdateWebhook, deleteWebhook,
+    getOrganizationApiKey, generateOrganizationApiKey, regenerateOrganizationApiKey, revokeOrganizationApiKey,
+    getMetaSettings, updateMetaSettings
+} from '../controllers/settingsController.js';
+
+const router = express.Router();
+
+// A generic endpoint to get all settings for an org could be useful
+router.route('/').get(protect, getSettings);
+
+// Stages
+router.route('/stages').post(protect, createOrUpdateStage);
+router.route('/stages/:id').put(protect, createOrUpdateStage).delete(protect, deleteStage);
+
+// Custom Fields
+router.route('/custom-fields').post(protect, createOrUpdateCustomField);
+router.route('/custom-fields/:id').put(protect, createOrUpdateCustomField).delete(protect, deleteCustomField);
+
+// Teams
+router.route('/teams').post(protect, createOrUpdateTeam);
+router.route('/teams/:id').put(protect, createOrUpdateTeam).delete(protect, deleteTeam);
+
+// Users
+router.route('/users').post(protect, createOrUpdateUser);
+router.route('/users/:id').put(protect, createOrUpdateUser).delete(protect, deleteUser);
+
+// Lead Score Rules
+router.route('/score-rules').post(protect, createOrUpdateLeadScoreRule);
+router.route('/score-rules/:id').put(protect, createOrUpdateLeadScoreRule).delete(protect, deleteLeadScoreRule);
+
+// Webhooks
+router.route('/webhooks').get(protect, createOrUpdateWebhook).post(protect, createOrUpdateWebhook);
+router.route('/webhooks/:id').put(protect, createOrUpdateWebhook).delete(protect, deleteWebhook);
+
+// Organization API Key Management
+router.route('/api-key').get(protect, getOrganizationApiKey);
+router.route('/api-key/generate').post(protect, generateOrganizationApiKey);
+router.route('/api-key/regenerate').post(protect, regenerateOrganizationApiKey);
+router.route('/api-key/revoke').post(protect, revokeOrganizationApiKey);
+
+// Meta Settings
+router.route('/meta-settings').get(protect, getMetaSettings).put(protect, updateMetaSettings);
+
+
+export default router;
+
+
+

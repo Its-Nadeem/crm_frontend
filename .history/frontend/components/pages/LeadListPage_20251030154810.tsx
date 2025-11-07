@@ -1,0 +1,872 @@
+
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { Lead, User, Stage, Task, CustomFieldDefinition, FilterCondition, FilterOperator, Permission, SavedFilter, WhatsAppTemplate, UserRole, LeadSource, ScheduledMessage, SMSTemplate } from '../../types';
+import AssignUserModal from '../leads/AssignUserModal';
+import { AppIcons } from '../ui/Icons';
+import { LEAD_SOURCES } from '../../constants';
+import ImportLeadsModal from '../leads/ImportLeadsModal';
+import Modal from '../ui/Modal';
+import { Link } from 'react-router-dom';
+import FilterBuilder from '../ui/FilterBuilder';
+import { apiService } from '../../src/services/api';
+import LeadDetailModal from '../leads/LeadDetailModal';
+
+// Resizable table components
+const ResizableTable: React.FC<{
+    children: React.ReactNode;
+    columnWidths: Record<string, number>;
+    onColumnResize: (columnId: string, width: number) => void;
+    columnOrder: string[];
+    onColumnReorder: (newOrder: string[]) => void;
+}> = ({ children, columnWidths, onColumnResize, columnOrder, onColumnReorder }) => {
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStartX, setDragStartX] = useState(0);
+    const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+    const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
+    const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
+    const handleMouseDown = (e: React.MouseEvent, columnId: string) => {
+        setIsDragging(true);
+        setDragStartX(e.clientX);
+        setResizingColumn(columnId);
+        e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isDragging || !resizingColumn) return;
+
+        const deltaX = e.clientX - dragStartX;
+        const newWidth = Math.max(80, (columnWidths[resizingColumn] || 150) + deltaX);
+        onColumnResize(resizingColumn, newWidth);
+        setDragStartX(e.clientX);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+        setResizingColumn(null);
+    };
+
+    const handleDragStart = (e: React.DragEvent, columnId: string) => {
+        setDraggedColumn(columnId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent, columnId: string) => {
+        e.preventDefault();
+        setDragOverColumn(columnId);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedColumn(null);
+        setDragOverColumn(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+        e.preventDefault();
+        if (!draggedColumn || draggedColumn === targetColumnId) return;
+
+        const draggedIndex = columnOrder.indexOf(draggedColumn);
+        const targetIndex = columnOrder.indexOf(targetColumnId);
+
+        const newOrder = [...columnOrder];
+        newOrder.splice(draggedIndex, 1);
+        newOrder.splice(targetIndex, 0, draggedColumn);
+
+        onColumnReorder(newOrder);
+        setDraggedColumn(null);
+        setDragOverColumn(null);
+    };
+
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isDragging, resizingColumn, dragStartX]);
+
+    return (
+        <div className="relative">
+            {children}
+        </div>
+    );
+};
+
+// Save Filter Modal Component
+const SaveFilterModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (name: string) => void;
+}> = ({ isOpen, onClose, onSave }) => {
+    const [filterName, setFilterName] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (filterName.trim()) {
+            onSave(filterName.trim());
+            setFilterName('');
+            onClose();
+        }
+    };
+
+    const handleClose = () => {
+        setFilterName('');
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} title="Save Filter View">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-subtle mb-2">
+                        Filter View Name
+                    </label>
+                    <input
+                        type="text"
+                        value={filterName}
+                        onChange={(e) => setFilterName(e.target.value)}
+                        placeholder="Enter a name for this filter view"
+                        className="w-full bg-background border border-muted rounded-lg py-2 px-3 text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        autoFocus
+                        required
+                    />
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t border-muted">
+                    <button
+                        type="button"
+                        onClick={handleClose}
+                        className="bg-muted hover:bg-subtle/80 text-on-surface font-bold py-2 px-4 rounded-lg"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg"
+                    >
+                        Save Filter View
+                    </button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+const LeadListPage: React.FC<{
+    leads: Lead[];
+    users: User[];
+    pipelineStages: Stage[];
+    customFieldDefs: CustomFieldDefinition[];
+    tasks: Task[];
+    whatsAppTemplates: WhatsAppTemplate[];
+    smsTemplates: SMSTemplate[];
+    addLead: (leadData: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'organizationId' | 'activities' | 'score' | 'closeDate'>) => Promise<void>;
+    deleteLead: (leadId: string) => Promise<void>;
+    currentUser: User;
+    hasPermission: (p: Permission) => boolean;
+    savedFilters: SavedFilter[];
+    onSaveFilter: (filter: Omit<SavedFilter, 'id' | 'organizationId'>) => Promise<void>;
+    onDeleteFilter: (id: string) => Promise<void>;
+    onBulkAssign: (leadIds: string[], assignedToId: number) => Promise<void>;
+    onBulkDelete: (leadIds: string[]) => Promise<void>;
+    onUpdateLead: (lead: Lead) => Promise<boolean>;
+    onUpdateTask: (task: Task) => Promise<void>;
+    onAddTask: (taskData: Omit<Task, 'id' | 'createdAt' | 'organizationId' | 'isCompleted' | 'assignedToId' | 'createdById'>, assignment?: { type: 'user' | 'team' | 'all'; id?: string | number }) => Promise<void>;
+    onScheduleMessage: (msgData: Omit<ScheduledMessage, 'id'|'organizationId'>) => Promise<void>;
+    onImportLeads?: (imported: any[]) => Promise<void>;
+}> = ({
+    leads,
+    users,
+    pipelineStages,
+    customFieldDefs,
+    tasks,
+    whatsAppTemplates,
+    smsTemplates,
+    addLead,
+    deleteLead,
+    currentUser,
+    hasPermission,
+    savedFilters,
+    onSaveFilter,
+    onDeleteFilter,
+    onBulkAssign,
+    onBulkDelete,
+    onUpdateLead,
+    onUpdateTask,
+    onAddTask,
+    onScheduleMessage,
+    onImportLeads
+}) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+    const [sortBy, setSortBy] = useState<'name' | 'email' | 'phone' | 'stage' | 'createdAt' | 'updatedAt' | 'source'>('updatedAt');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [showSaveFilterModal, setShowSaveFilterModal] = useState(false);
+    const [showLeadDetailModal, setShowLeadDetailModal] = useState(false);
+    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [filters, setFilters] = useState<FilterCondition[]>([]);
+    const [activeFilter, setActiveFilter] = useState<SavedFilter | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [showColumnSettings, setShowColumnSettings] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [showSearchModal, setShowSearchModal] = useState(false);
+    const [showBasicFilters, setShowBasicFilters] = useState(false);
+    const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+    const [basicFilters, setBasicFilters] = useState({
+        campaign: '',
+        stage: '',
+        assignedToId: 0,
+        course: ''
+    });
+    const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
+        checkbox: 50,
+        name: 200,
+        source: 120,
+        email: 180,
+        phone: 140,
+        alternatePhone: 140,
+        city: 120,
+        course: 150,
+        company: 150,
+        stage: 120,
+        followUpStatus: 140,
+        score: 80,
+        tags: 120,
+        assignedToId: 140,
+        dealValue: 120,
+        closeDate: 120,
+        campaign: 150,
+        facebookCampaign: 150,
+        facebookAdset: 150,
+        facebookAd: 150,
+        createdAt: 120,
+        updatedAt: 120,
+        actions: 100
+    });
+    const [columnOrder, setColumnOrder] = useState<string[]>([
+        'checkbox',
+        'name',
+        'source',
+        'email',
+        'phone',
+        'alternatePhone',
+        'city',
+        'course',
+        'company',
+        'stage',
+        'followUpStatus',
+        'score',
+        'tags',
+        'assignedToId',
+        'dealValue',
+        'closeDate',
+        'campaign',
+        'facebookCampaign',
+        'facebookAdset',
+        'facebookAd',
+        'createdAt',
+        'updatedAt',
+        'actions'
+    ]);
+    const [visibleColumns, setVisibleColumns] = useState({
+        // Basic lead fields
+        name: true,
+        email: true,
+        phone: true,
+        alternatePhone: false,
+        city: false,
+        course: false,
+        company: false,
+        source: false,
+        stage: true,
+        followUpStatus: false,
+        score: false,
+        tags: false,
+        assignedToId: true,
+        dealValue: false,
+        closeDate: false,
+        campaign: false,
+        facebookCampaign: false,
+        facebookAdset: false,
+        facebookAd: false,
+        createdAt: false,
+        updatedAt: true,
+        // Custom fields will be added dynamically
+    });
+
+    // Load leads on component mount
+    useEffect(() => {
+        const loadLeads = async () => {
+            setIsLoading(true);
+            try {
+                // Leads are passed as props, so no need to fetch here
+                // The parent component (App.tsx) handles the data fetching
+            } catch (error) {
+                console.error('Failed to load leads:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadLeads();
+    }, []);
+
+    // Basic filters result (for live count display)
+    const basicFilteredLeads = useMemo(() => {
+        let filtered = leads;
+
+        // Apply search filter
+        if (searchTerm) {
+            const searchLower = searchTerm.toLowerCase();
+            filtered = filtered.filter(lead =>
+                lead.name?.toLowerCase().includes(searchLower) ||
+                lead.email?.toLowerCase().includes(searchLower) ||
+                lead.phone?.toLowerCase().includes(searchLower) ||
+                lead.company?.toLowerCase().includes(searchLower)
+            );
+        }
+
+        // Apply basic filters
+        if (basicFilters.campaign) {
+            filtered = filtered.filter(lead => lead.campaign?.toLowerCase().includes(basicFilters.campaign.toLowerCase()));
+        }
+        if (basicFilters.stage) {
+            filtered = filtered.filter(lead => lead.stage === basicFilters.stage);
+        }
+        if (basicFilters.assignedToId > 0) {
+            filtered = filtered.filter(lead => lead.assignedToId === basicFilters.assignedToId);
+        }
+        if (basicFilters.course) {
+            filtered = filtered.filter(lead => lead.course?.toLowerCase().includes(basicFilters.course.toLowerCase()));
+        }
+
+        return filtered;
+    }, [leads, searchTerm, basicFilters.campaign, basicFilters.stage, basicFilters.assignedToId, basicFilters.course]);
+
+    // Filter and sort leads
+    const filteredAndSortedLeads = useMemo(() => {
+        let filtered = basicFilteredLeads;
+
+        // Apply custom filters
+        if (filters.length > 0) {
+            filtered = filtered.filter(lead => {
+                return filters.every(filter => {
+                    const value = lead[filter.field as keyof Lead];
+                    const filterValue = filter.value;
+
+                    switch (filter.operator) {
+                        case 'contains':
+                            return String(value || '').toLowerCase().includes(String(filterValue || '').toLowerCase());
+                        case 'equals':
+                            return value === filterValue;
+                        case 'not_equals':
+                            return value !== filterValue;
+                        case 'gt':
+                            return Number(value) > Number(filterValue);
+                        case 'lt':
+                            return Number(value) < Number(filterValue);
+                        case 'gte':
+                            return Number(value) >= Number(filterValue);
+                        case 'lte':
+                            return Number(value) <= Number(filterValue);
+                        case 'is_between':
+                            const [min, max] = Array.isArray(filterValue) ? filterValue : [filterValue, filterValue];
+                            return Number(value) >= Number(min) && Number(value) <= Number(max);
+                        default:
+                            return true;
+                    }
+                });
+            });
+        }
+
+        // Sort leads
+        filtered.sort((a, b) => {
+            let aValue: any = a[sortBy];
+            let bValue: any = b[sortBy];
+
+            // Handle special cases
+            if (sortBy === 'stage') {
+                const aStage = pipelineStages.find(s => s.id === aValue);
+                const bStage = pipelineStages.find(s => s.id === bValue);
+                aValue = aStage?.name || '';
+                bValue = bStage?.name || '';
+            }
+
+            // Handle null/undefined values
+            if (aValue == null && bValue == null) return 0;
+            if (aValue == null) return sortOrder === 'asc' ? -1 : 1;
+            if (bValue == null) return sortOrder === 'asc' ? 1 : -1;
+
+            // Convert to strings for comparison if needed
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return filtered;
+    }, [basicFilteredLeads, filters, sortBy, sortOrder, pipelineStages]);
+
+    // Paginate leads
+    const paginatedLeads = useMemo(() => {
+        const startIndex = (currentPage - 1) * pageSize;
+        return filteredAndSortedLeads.slice(startIndex, startIndex + pageSize);
+    }, [filteredAndSortedLeads, currentPage, pageSize]);
+
+    const totalPages = Math.ceil(filteredAndSortedLeads.length / pageSize);
+
+    // Handle lead selection
+    const handleSelectLead = (leadId: string, selected: boolean) => {
+        const newSelected = new Set(selectedLeads);
+        if (selected) {
+            newSelected.add(leadId);
+        } else {
+            newSelected.delete(leadId);
+        }
+        setSelectedLeads(newSelected);
+    };
+
+    const handleSelectAll = (selected: boolean) => {
+        if (selected) {
+            setSelectedLeads(new Set(paginatedLeads.map(lead => lead.id)));
+        } else {
+            setSelectedLeads(new Set());
+        }
+    };
+
+    // Handle bulk operations
+    const handleBulkAssign = async (assignedToId: number) => {
+        try {
+            await onBulkAssign(Array.from(selectedLeads), assignedToId);
+            setSelectedLeads(new Set());
+            setShowAssignModal(false);
+        } catch (error) {
+            console.error('Failed to bulk assign leads:', error);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (window.confirm(`Are you sure you want to delete ${selectedLeads.size} leads?`)) {
+            try {
+                await onBulkDelete(Array.from(selectedLeads));
+                setSelectedLeads(new Set());
+            } catch (error) {
+                console.error('Failed to bulk delete leads:', error);
+            }
+        }
+    };
+
+    const handleBulkUpdate = async (updates: Partial<Lead>) => {
+        try {
+            // Update each selected lead with the bulk changes
+            for (const leadId of Array.from(selectedLeads)) {
+                const lead = leads.find(l => l.id === leadId);
+                if (lead) {
+                    await onUpdateLead({ ...lead, ...updates });
+                }
+            }
+            alert(`Successfully updated ${selectedLeads.size} leads!`);
+        } catch (error) {
+            console.error('Failed to bulk update leads:', error);
+            alert('Failed to update leads. Please try again.');
+        }
+    };
+
+    // Handle sorting
+    const handleSort = (field: typeof sortBy) => {
+        if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('asc');
+        }
+    };
+
+    // Handle filter operations
+    const handleApplyFilters = (newFilters: FilterCondition[]) => {
+        setFilters(newFilters);
+        setCurrentPage(1);
+    };
+
+    const handleSaveFilter = async (name: string) => {
+        try {
+            await onSaveFilter({
+                name,
+                conditions: filters
+            } as any);
+        } catch (error) {
+            console.error('Failed to save filter:', error);
+        }
+    };
+
+    const handleLoadFilter = (filter: SavedFilter) => {
+        setFilters(filter.conditions);
+        setActiveFilter(filter);
+        setCurrentPage(1);
+    };
+
+    const handleClearFilters = () => {
+        setFilters([]);
+        setActiveFilter(null);
+        setBasicFilters({ campaign: '', stage: '', assignedToId: 0, course: '' });
+        setCurrentPage(1);
+    };
+
+    const handleClearBasicFilters = () => {
+        setBasicFilters({ campaign: '', stage: '', assignedToId: 0, course: '' });
+        setCurrentPage(1);
+    };
+
+    const handleColumnResize = (columnId: string, width: number) => {
+        setColumnWidths(prev => ({
+            ...prev,
+            [columnId]: width
+        }));
+    };
+
+    const handleColumnReorder = (newOrder: string[]) => {
+        setColumnOrder(newOrder);
+    };
+
+    const handleExportLeads = async (exportType: 'filtered' | 'all' | 'selected' | 'currentPage') => {
+        try {
+            setIsExporting(true);
+
+            let dataToExport: Lead[] = [];
+
+            switch (exportType) {
+                case 'filtered':
+                    dataToExport = filteredAndSortedLeads;
+                    break;
+                case 'all':
+                    dataToExport = leads;
+                    break;
+                case 'selected':
+                    dataToExport = Array.from(selectedLeads).map(id => leads.find(l => l.id === id)).filter(Boolean) as Lead[];
+                    break;
+                case 'currentPage':
+                    dataToExport = paginatedLeads;
+                    break;
+            }
+
+            if (dataToExport.length === 0) {
+                alert('No leads to export.');
+                return;
+            }
+
+            const exportData = dataToExport.map(lead => ({
+                Name: lead.name || '',
+                Email: lead.email || '',
+                Phone: lead.phone || '',
+                'Alternate Phone': lead.alternatePhone || '',
+                City: lead.city || '',
+                Course: lead.course || '',
+                Company: lead.company || '',
+                Source: typeof lead.source === 'string' ? lead.source : '',
+                Stage: getStageName(lead.stage),
+                'Follow Up Status': lead.followUpStatus || '',
+                Score: lead.score || 0,
+                Tags: lead.tags?.join(', ') || '',
+                'Assigned To': getUserName(lead.assignedToId),
+                'Deal Value': lead.dealValue || 0,
+                'Close Date': lead.closeDate ? new Date(lead.closeDate).toLocaleDateString() : '',
+                Campaign: lead.campaign || '',
+                'Facebook Campaign': lead.facebookCampaign || '',
+                'Facebook Adset': lead.facebookAdset || '',
+                'Facebook Ad': lead.facebookAd || '',
+                'Created At': lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '',
+                'Updated At': lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '',
+                // Include custom fields
+                ...Object.fromEntries(
+                    customFieldDefs.map(field => [
+                        field.name,
+                        lead.customFields?.[field.id] || ''
+                    ])
+                )
+            }));
+
+            const csvContent = [
+                Object.keys(exportData[0]).join(','),
+                ...exportData.map(row => Object.values(row).map(val => `"${val}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+
+            const exportTypeLabel = {
+                filtered: 'filtered',
+                all: 'all',
+                selected: 'selected',
+                currentPage: 'current_page'
+            }[exportType];
+
+            link.setAttribute('download', `leads_export_${exportTypeLabel}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setShowExportModal(false);
+        } catch (error) {
+            console.error('Failed to export leads:', error);
+            alert('Failed to export leads. Please try again.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // Get user name by ID
+    const getUserName = (userId: number) => {
+        const user = users.find(u => u.id === userId);
+        return user?.name || 'Unassigned';
+    };
+
+    // Get stage name by ID
+    const getStageName = (stageId: string) => {
+        const stage = pipelineStages.find(s => s.id === stageId);
+        return stage?.name || 'Unknown Stage';
+    };
+
+    // Get stage color by ID
+    const getStageColor = (stageId: string) => {
+        const stage = pipelineStages.find(s => s.id === stageId);
+        return stage?.color || '#6b7280';
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                <span className="ml-2 text-subtle">Loading leads...</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-on-surface">Leads</h1>
+                    <div className="flex items-center gap-4 mt-1">
+                        <p className="text-subtle">
+                            {filteredAndSortedLeads.length} lead{filteredAndSortedLeads.length !== 1 ? 's' : ''}
+                            {searchTerm && ` matching "${searchTerm}"`}
+                        </p>
+                        {(basicFilters.campaign || basicFilters.stage || basicFilters.assignedToId > 0) && (
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-primary-600 font-medium">Basic filters active:</span>
+                                <span className="bg-primary-100 text-primary-800 px-2 py-1 rounded-full text-xs">
+                                    {basicFilteredLeads.length} results
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    {hasPermission(Permission.MANAGE_USERS) && (
+                        <>
+                            <div className="max-w-xs mr-4">
+                                <div className="relative">
+                                    <AppIcons.Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-subtle" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name, email, phone, company..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-12 py-3 bg-background border border-muted rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                                    />
+                                    <button
+                                        onClick={() => setShowSearchModal(true)}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 text-subtle hover:text-primary-500"
+                                        title="Advanced Search Options"
+                                    >
+                                        <AppIcons.Filter className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowImportModal(true)}
+                                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                            >
+                                <AppIcons.Import className="h-4 w-4" />
+                                Import
+                            </button>
+                            <button
+                                onClick={() => setShowExportModal(true)}
+                                disabled={filteredAndSortedLeads.length === 0}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                            >
+                                <AppIcons.Export className="h-4 w-4" />
+                                Export
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const leadData = {
+                                        name: '',
+                                        email: '',
+                                        phone: '',
+                                        alternatePhone: '',
+                                        city: '',
+                                        course: '',
+                                        company: '',
+                                        stage: pipelineStages[0]?.id || '',
+                                        source: LeadSource.WEBSITE,
+                                        assignedToId: currentUser.id,
+                                        followUpStatus: 'Pending' as any,
+                                        dealValue: 0,
+                                        closeDate: '',
+                                        tags: [],
+                                        campaign: '',
+                                        facebookCampaign: '',
+                                        facebookAdset: '',
+                                        facebookAd: ''
+                                    };
+                                    addLead(leadData);
+                                }}
+                                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                            >
+                                <AppIcons.Add className="h-4 w-4" />
+                                Add Lead
+                            </button>
+                            <button
+                                onClick={() => setShowColumnSettings(true)}
+                                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                            >
+                                <AppIcons.Settings className="h-4 w-4" />
+                                Columns
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="bg-surface rounded-lg p-4 space-y-4">
+                <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={() => setShowBasicFilters(!showBasicFilters)}
+                            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+                                showBasicFilters || basicFilters.campaign || basicFilters.stage || basicFilters.assignedToId > 0
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-muted hover:bg-muted/80 text-on-surface'
+                            }`}
+                        >
+                            <AppIcons.Filter className="h-4 w-4" />
+                            Basic Filters
+                            {(basicFilters.campaign || basicFilters.stage || basicFilters.assignedToId > 0 || basicFilters.course) && (
+                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                    {(basicFilters.campaign ? 1 : 0) + (basicFilters.stage ? 1 : 0) + (basicFilters.assignedToId > 0 ? 1 : 0) + (basicFilters.course ? 1 : 0)}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+                                showAdvancedFilters
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-muted hover:bg-muted/80 text-on-surface'
+                            }`}
+                        >
+                            <AppIcons.Filter className="h-4 w-4" />
+                            Advanced Filters
+                            {filters.length > 0 && (
+                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                    {filters.length}
+                                </span>
+                            )}
+                        </button>
+                        {savedFilters.length > 0 && (
+                            <div className="relative">
+                                <select
+                                    value={activeFilter?.id || ''}
+                                    onChange={(e) => {
+                                        const filter = savedFilters.find(f => f.id === e.target.value);
+                                        if (filter) {
+                                            handleLoadFilter(filter);
+                                        } else {
+                                            handleClearFilters();
+                                        }
+                                    }}
+                                    className="px-3 py-2 bg-background border border-muted rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                >
+                                    <option value="">Saved Filters</option>
+                                    {savedFilters.map(filter => (
+                                        <option key={filter.id} value={filter.id}>{filter.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {(filters.length > 0 || basicFilters.campaign || basicFilters.stage || basicFilters.assignedToId > 0 || basicFilters.course) && (
+                            <button
+                                onClick={handleClearFilters}
+                                className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium"
+                            >
+                                Clear All
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Basic Filters Panel */}
+                {showBasicFilters && (
+                    <div className="border-t border-muted pt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-subtle mb-2">
+                                    Campaign
+                                </label>
+                                <input
+                                    type="text"
+                                    value={basicFilters.campaign}
+                                    onChange={(e) => setBasicFilters(prev => ({ ...prev, campaign: e.target.value }))}
+                                    placeholder="Filter by campaign name"
+                                    className="w-full bg-background border border-muted rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                />
+                                {basicFilters.campaign && (
+                                    <p className="text-xs text-primary-600 mt-1">
+                                        Showing {basicFilteredLeads.length} leads with campaign containing "{basicFilters.campaign}"
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-subtle mb-2">
+                                    Lead Stage
+                                </label>
+                                <select
+                                    value={basicFilters.stage}
+                                    onChange={(e) => setBasicFilters(prev => ({ ...prev, stage: e.target.value }))}
+                                    className="w-full bg-background border border-muted rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                >
+                                    <option value="">All Stages</option>
+                                    {pipelineStages.map(stage => (
+                                        <option key={stage.id} value={stage.id}>{stage.name}</option>
+                                    ))}
+                                </select>
+                                {basicFilters.stage && (
+                                    <p className="text-xs text-primary-600 mt-1">
+                                        Showing {basicFilteredLeads.length} leads in {pipelineStages.find(s => s.id === basicFilters.stage)?.name}
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-subtle mb-2">
+                                    Assigned To
+                                </label>
+                                <select

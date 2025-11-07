@@ -1,0 +1,21 @@
+tunnel: clienn-crm-tunnel
+credentials-file: C:\Users\Its_naddeem\.cloudflared\2f6feee1-32a9-43d9-93c6-26e8eca89640.json
+
+ingress:
+  - hostname: crm.clienn.com
+    originRequest:
+      noTLSVerify: true
+    service: http://localhost:3000
+  - hostname: crm.clienn.com
+    path: /api/(.*)
+    originRequest:
+      noTLSVerify: true
+    service: http://localhost:5000
+  - hostname: crm.clienn.com
+    path: /api-docs
+    originRequest:
+      noTLSVerify: true
+    service: http://localhost:5000
+  - service: http_status:404
+
+
