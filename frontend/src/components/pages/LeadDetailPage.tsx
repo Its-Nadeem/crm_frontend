@@ -6,6 +6,7 @@ import ScheduleMessageModal from '../leads/ScheduleMessageModal';
 import LogCallModal from '../leads/LogCallModal';
 import SMSModal from '../leads/SMSModal';
 import EmailModal from '../leads/EmailModal';
+import { faker } from '@faker-js/faker';
 import Modal from '../ui/Modal';
 import { ActivityTimeline } from '../leads/ActivityTimeline';
 import { AddNoteModal } from '../leads/AddNoteModal';
@@ -13,7 +14,6 @@ import { AddTaskModal } from '../leads/AddTaskModal';
 import { useToast } from '../ui/Toast';
 import { apiService } from '../../services/api';
 import { useLeadActivities, useCreateLeadNote, useCreateLeadTask, useLead } from '../../hooks/useLeadActivities';
-import { parsePhoneNumber } from 'libphonenumber-js';
 // import { useQuery } from '@tanstack/react-query'; // Disabled React Query for lead fetching
 
 // Local re-implementation of WhatsAppModal from LeadDetailModal to avoid circular dependencies
@@ -522,28 +522,6 @@ const LeadDetailPage: React.FC<LeadDetailPageProps> = ({ leads, users, tasks, pi
     const showInlineSync   = false; // NEVER show loading indicators
     const showSyncingRibbon = false; // NEVER show loading indicators
 
-    // Format phone number with country code
-    const formatPhoneNumber = (phone: string) => {
-        if (!phone) return '-';
-        try {
-            // If phone already has country code, format it
-            if (phone.startsWith('+')) {
-                const phoneNumber = parsePhoneNumber(phone);
-                return phoneNumber ? phoneNumber.formatInternational() : phone;
-            }
-            // If no country code, assume India (+91) for Indian numbers
-            if (phone.length === 10 && /^\d{10}$/.test(phone)) {
-                const phoneNumber = parsePhoneNumber(phone, 'IN');
-                return phoneNumber ? phoneNumber.formatInternational() : `+91 ${phone}`;
-            }
-            // For other formats, try to parse as is
-            const phoneNumber = parsePhoneNumber(phone);
-            return phoneNumber ? phoneNumber.formatInternational() : phone;
-        } catch (error) {
-            return phone; // Return original if parsing fails
-        }
-    };
-
 
 
     if (showPageSkeleton) {
@@ -683,9 +661,6 @@ const LeadDetailPage: React.FC<LeadDetailPageProps> = ({ leads, users, tasks, pi
                         <div>
                             <label className="text-xs font-medium text-subtle">Phone</label>
                             <input type="tel" value={editableLead.phone} onChange={e => handleFieldChange('phone', e.target.value)} className="w-full bg-transparent border-b border-muted py-1 text-on-surface focus:outline-none focus:border-primary-500" />
-                            <div className="text-xs text-subtle mt-1">{formatPhoneNumber(editableLead.phone)}</div>
-                            <div className="text-xs text-subtle mt-1">{formatPhoneNumber(editableLead.phone)}</div>
-                            <div className="text-xs text-subtle mt-1">{formatPhoneNumber(editableLead.phone)}</div>
                         </div>
                         <div>
                              <label className="text-xs font-medium text-subtle">Owner</label>

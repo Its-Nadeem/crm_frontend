@@ -9,115 +9,6 @@ router.route('/')
     .get(protect, getLeads)
     .post(protect, createLead);
 
-// Column preferences routes - must come before /:id to avoid conflicts
-router.route('/column-preferences')
-    .get(protect, async (req, res) => {
-        try {
-            const user = await User.findOne({ id: req.user.id, organizationId: req.user.organizationId });
-
-            if (!user) {
-                return res.status(404).json({ success: false, message: 'User not found' });
-            }
-
-            // Return column preferences with defaults if not set
-            const preferences = {
-                columnOrder: user.leadColumnPreferences?.columnOrder || [
-                    'checkbox',
-                    'name',
-                    'source',
-                    'email',
-                    'phone',
-                    'alternatePhone',
-                    'city',
-                    'course',
-                    'company',
-                    'stage',
-                    'followUpStatus',
-                    'score',
-                    'tags',
-                    'assignedToId',
-                    'dealValue',
-                    'closeDate',
-                    'campaign',
-                    'facebookCampaign',
-                    'facebookAdset',
-                    'facebookAd',
-                    'createdAt',
-                    'updatedAt',
-                    'actions'
-                ],
-                visibleColumns: user.leadColumnPreferences?.visibleColumns || {
-                    name: true,
-                    email: true,
-                    phone: true,
-                    alternatePhone: false,
-                    city: false,
-                    course: false,
-                    company: false,
-                    source: false,
-                    stage: true,
-                    followUpStatus: false,
-                    score: false,
-                    tags: false,
-                    assignedToId: true,
-                    dealValue: false,
-                    closeDate: false,
-                    campaign: false,
-                    facebookCampaign: false,
-                    facebookAdset: false,
-                    facebookAd: false,
-                    createdAt: false,
-                    updatedAt: true,
-                }
-            };
-
-            res.json({ success: true, data: preferences });
-        } catch (error) {
-            console.error('Error fetching column preferences:', error);
-            res.status(500).json({ success: false, message: 'Server Error' });
-        }
-    })
-    .put(protect, async (req, res) => {
-        try {
-            const { columnOrder, visibleColumns } = req.body;
-
-            // Validate input
-            if (!Array.isArray(columnOrder)) {
-                return res.status(400).json({ success: false, message: 'columnOrder must be an array' });
-            }
-
-            if (typeof visibleColumns !== 'object' || visibleColumns === null) {
-                return res.status(400).json({ success: false, message: 'visibleColumns must be an object' });
-            }
-
-            const user = await User.findOneAndUpdate(
-                { id: req.user.id, organizationId: req.user.organizationId },
-                {
-                    $set: {
-                        'leadColumnPreferences.columnOrder': columnOrder,
-                        'leadColumnPreferences.visibleColumns': visibleColumns
-                    }
-                },
-                { new: true }
-            );
-
-            if (!user) {
-                return res.status(404).json({ success: false, message: 'User not found' });
-            }
-
-            res.json({
-                success: true,
-                data: {
-                    columnOrder: user.leadColumnPreferences.columnOrder,
-                    visibleColumns: user.leadColumnPreferences.visibleColumns
-                }
-            });
-        } catch (error) {
-            console.error('Error updating column preferences:', error);
-            res.status(500).json({ success: false, message: 'Server Error' });
-        }
-    });
-
 router.route('/:id')
     .get(protect, async (req, res) => {
         try {
@@ -227,6 +118,113 @@ router.get('/:id/activities', protect, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
+router.route('/column-preferences')
+    .get(protect, async (req, res) => {
+        try {
+            const user = await User.findOne({ id: req.user.id, organizationId: req.user.organizationId });
+
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'User not found' });
+            }
+
+            // Return column preferences with defaults if not set
+            const preferences = {
+                columnOrder: user.leadColumnPreferences?.columnOrder || [
+                    'checkbox',
+                    'name',
+                    'source',
+                    'email',
+                    'phone',
+                    'alternatePhone',
+                    'city',
+                    'course',
+                    'company',
+                    'stage',
+                    'followUpStatus',
+                    'score',
+                    'tags',
+                    'assignedToId',
+                    'dealValue',
+                    'closeDate',
+                    'campaign',
+                    'facebookCampaign',
+                    'facebookAdset',
+                    'facebookAd',
+                    'createdAt',
+                    'updatedAt',
+                    'actions'
+                ],
+                visibleColumns: user.leadColumnPreferences?.visibleColumns || {
+                    name: true,
+                    email: true,
+                    phone: true,
+                    alternatePhone: false,
+                    city: false,
+                    course: false,
+                    company: false,
+                    source: false,
+                    stage: true,
+                    followUpStatus: false,
+                    score: false,
+                    tags: false,
+                    assignedToId: true,
+                    dealValue: false,
+                    closeDate: false,
+                    campaign: false,
+                    facebookCampaign: false,
+                    facebookAdset: false,
+                    facebookAd: false,
+                    createdAt: false,
+                    updatedAt: true,
+                }
+            };
+
+            res.json({ success: true, data: preferences });
+        } catch (error) {
+            console.error('Error fetching column preferences:', error);
+            res.status(500).json({ success: false, message: 'Server Error' });
+        }
+    })
+    .put(protect, async (req, res) => {
+        try {
+            const { columnOrder, visibleColumns } = req.body;
+
+            // Validate input
+            if (!Array.isArray(columnOrder)) {
+                return res.status(400).json({ success: false, message: 'columnOrder must be an array' });
+            }
+
+            if (typeof visibleColumns !== 'object' || visibleColumns === null) {
+                return res.status(400).json({ success: false, message: 'visibleColumns must be an object' });
+            }
+
+            const user = await User.findOneAndUpdate(
+                { id: req.user.id, organizationId: req.user.organizationId },
+                {
+                    $set: {
+                        'leadColumnPreferences.columnOrder': columnOrder,
+                        'leadColumnPreferences.visibleColumns': visibleColumns
+                    }
+                },
+                { new: true }
+            );
+
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'User not found' });
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    columnOrder: user.leadColumnPreferences.columnOrder,
+                    visibleColumns: user.leadColumnPreferences.visibleColumns
+                }
+            });
+        } catch (error) {
+            console.error('Error updating column preferences:', error);
+            res.status(500).json({ success: false, message: 'Server Error' });
+        }
+    });
 
 export default router;
 

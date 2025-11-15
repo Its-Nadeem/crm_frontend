@@ -30,11 +30,14 @@ const getAppData = async (req, res) => {
               return;
         }
 
+        console.log('Loading data for organization:', orgId);
+
         // First, let's check what stages exist in the database for this organization
         const { ensureDefaultStages } = await import('./settingsController.js');
         await ensureDefaultStages(orgId);
 
         const allStagesForOrg = await Stage.find({ organizationId: orgId });
+        console.log('DEBUG: Stages found in database for org', orgId, ':', allStagesForOrg.length, allStagesForOrg.map(s => ({ id: s.id, name: s.name })));
 
         const [
             organization,
@@ -90,6 +93,8 @@ const getAppData = async (req, res) => {
             Promise.resolve(null), // chatbotConfig
         ]);
 
+        console.log('DEBUG: Final stages being sent to frontend:', stages.length, stages.map(s => ({ id: s.id, name: s.name })));
+
         // Get the current subscription plan for the organization
         let currentSubscriptionPlan = null;
 
@@ -108,9 +113,25 @@ const getAppData = async (req, res) => {
             }
         }
 
+        console.log('Organization data:', {
+            id: organization?.id,
+            name: organization?.name,
+            subscriptionPlanId: organization?.subscriptionPlanId,
+            subscriptionExpiresAt: organization?.subscriptionExpiresAt
+        });
+
+        console.log('Available subscription plans:', subscriptionPlans.map(p => ({ id: p.id, name: p.name })));
+        console.log('Organization subscription plan ID:', organization?.subscriptionPlanId);
+        console.log('Current subscription plan found:', currentSubscriptionPlan ? {
+            id: currentSubscriptionPlan.id,
+            name: currentSubscriptionPlan.name
+        } : 'Not found');
+
         // Additional debugging for troubleshooting
         if (organization?.subscriptionPlanId === 'enterprise') {
+            console.log('🔍 DEBUG: Organization has enterprise plan ID, looking for plan_enterprise...');
             const enterprisePlan = subscriptionPlans.find(plan => plan.id === 'plan_enterprise');
+            console.log('🔍 DEBUG: plan_enterprise found:', enterprisePlan ? 'YES' : 'NO');
         }
 
         // Ensure organization has subscription plan info
@@ -311,6 +332,8 @@ const getReportsData = async (req, res) => {
             return;
         }
 
+        console.log('Loading reports data for organization:', orgId);
+
         // Ensure default stages exist for this organization
         const { ensureDefaultStages } = await import('./settingsController.js');
         await ensureDefaultStages(orgId);
@@ -326,6 +349,9 @@ const getReportsData = async (req, res) => {
             Stage.find({ organizationId: orgId }),
             Team.find({ organizationId: orgId })
         ]);
+
+        console.log('Total leads fetched:', leads.length);
+        console.log('Stages available:', stages.map(s => ({ id: s.id, name: s.name })));
 
         // Define the proper funnel order based on actual app stages (from top to bottom: New Lead -> ... -> Closed Won)
         const funnelOrder = [
@@ -347,6 +373,7 @@ const getReportsData = async (req, res) => {
                 lead.stage === stage.name ||
                 lead.stage === stage.name.toLowerCase().replace(/\s+/g, '-')
             ).length;
+            console.log(`Stage ${stage.name} (${stage.id}): ${count} leads`);
             return {
                 name: stage.name,
                 value: count,
@@ -366,13 +393,26 @@ const getReportsData = async (req, res) => {
             stage.name.toLowerCase().replace(/\s+/g, '-')
         ]);
         const leadsWithInvalidStages = leads.filter(lead => lead.stage && !allStageValues.includes(lead.stage));
+        console.log('Leads with stages not counted in funnel:', leadsWithInvalidStages.length);
+        if (leadsWithInvalidStages.length > 0) {
+            console.log('Invalid stage values:', [...new Set(leadsWithInvalidStages.map(l => l.stage))]);
+        }
+
         const leadsWithNullStages = leads.filter(lead => !lead.stage);
+        console.log('Leads with null/undefined stages:', leadsWithNullStages.length);
 
         // Add leads with invalid stages to the first stage (New Lead)
         const invalidStageCount = leadsWithInvalidStages.length + leadsWithNullStages.length;
         if (invalidStageCount > 0 && salesFunnelData.length > 0) {
             salesFunnelData[0].value += invalidStageCount;
+            console.log(`Added ${invalidStageCount} leads with invalid/null stages to ${salesFunnelData[0].name}`);
         }
+
+        const totalInFunnel = salesFunnelData.reduce((sum, stage) => sum + stage.value, 0);
+        console.log('Total leads in funnel:', totalInFunnel);
+        console.log('Difference:', leads.length - totalInFunnel);
+
+        console.log('Sales funnel data being sent:', salesFunnelData);
 
         // Calculate lead source data
         const leadSourceCounts = leads.reduce((acc, lead) => {

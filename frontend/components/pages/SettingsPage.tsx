@@ -266,15 +266,23 @@ const PipelineSettings: React.FC<{ stages: Stage[]; onAdd: (name: string, color:
     const [stageToDelete, setStageToDelete] = useState<Stage | null>(null);
 
     useEffect(() => {
+        console.log('DEBUG: PipelineSettings: Stages updated, re-syncing local state:', {
+            stagesCount: stages.length,
+            localStagesCount: localStages.length,
+            stages: stages.map(s => ({id: s.id, name: s.name})),
+            localStages: localStages.map(s => ({id: s.id, name: s.name}))
+        });
         setLocalStages(stages);
         // Force re-render when stages change
         setRefreshTrigger(prev => prev + 1);
     }, [stages]);
 
     const handleAddStage = async (name: string, color: string) => {
+        console.log('DEBUG: handleAddStage called with:', { name, color });
         setIsLoading('add');
         try {
             await onAdd(name, color);
+            console.log('DEBUG: Stage creation successful, closing modal');
             // Close modal after successful stage creation
             setIsAddModalOpen(false);
         } catch (error) {
@@ -285,17 +293,21 @@ const PipelineSettings: React.FC<{ stages: Stage[]; onAdd: (name: string, color:
     };
 
     const handleOpenAddModal = () => {
+        console.log('DEBUG: Opening add stage modal');
         setIsAddModalOpen(true);
     };
 
     const handleCloseAddModal = () => {
+        console.log('DEBUG: Closing add stage modal');
         setIsAddModalOpen(false);
     };
 
     const handleUpdate = async (id: string, field: 'name' | 'color', value: string) => {
+        console.log('DEBUG: handleUpdate called:', { id, field, value });
         setIsLoading(`update-${id}`);
         try {
             await onUpdate(id, field, value);
+            console.log('DEBUG: Stage update successful');
         } catch (error) {
             console.error('Failed to update stage:', error);
         } finally {
@@ -306,9 +318,11 @@ const PipelineSettings: React.FC<{ stages: Stage[]; onAdd: (name: string, color:
     const handleDeleteStage = async () => {
         if (!stageToDelete) return;
 
+        console.log('DEBUG: handleDeleteStage called for stage:', stageToDelete.id, stageToDelete.name);
         setIsLoading(`delete-${stageToDelete.id}`);
         try {
             await onDelete(stageToDelete.id);
+            console.log('DEBUG: Stage deletion successful, updating local state');
             // Update local state immediately to remove the deleted stage
             setLocalStages(prev => prev.filter(stage => stage.id !== stageToDelete.id));
             setIsDeleteModalOpen(false);
@@ -321,11 +335,13 @@ const PipelineSettings: React.FC<{ stages: Stage[]; onAdd: (name: string, color:
     };
 
     const handleOpenDeleteModal = (stage: Stage) => {
+        console.log('DEBUG: Opening delete modal for stage:', stage.id, stage.name);
         setStageToDelete(stage);
         setIsDeleteModalOpen(true);
     };
 
     const handleCloseDeleteModal = () => {
+        console.log('DEBUG: Closing delete stage modal');
         setIsDeleteModalOpen(false);
         setStageToDelete(null);
     };
@@ -466,6 +482,8 @@ const LeadScoringSettings: React.FC<{
     const handleSaveRule = async (ruleData: any) => {
         setIsLoading('save');
         try {
+            console.log('Saving rule data:', ruleData);
+
             // For new rules, let the backend generate the ID
             // For existing rules, preserve the original ID
             const ruleToSave = { ...ruleData };
@@ -474,7 +492,10 @@ const LeadScoringSettings: React.FC<{
             if (!ruleData.id || ruleData.id.startsWith('new_') || ruleData.id.startsWith('rule_')) {
                 // Remove the temporary ID so backend can generate a proper one
                 delete ruleToSave.id;
+                console.log('Removed temporary ID for new rule, letting backend generate it');
             }
+
+            console.log('Final rule to save:', ruleToSave);
 
             await onSave(ruleToSave);
 
@@ -483,6 +504,8 @@ const LeadScoringSettings: React.FC<{
             // But we need to close the modal immediately
             setIsAddModalOpen(false);
             setEditingRule(null);
+
+            console.log('Rule saved successfully, UI updated immediately');
         } catch (error) {
             console.error('Failed to save rule:', error);
             // You could add toast notification here
@@ -499,6 +522,7 @@ const LeadScoringSettings: React.FC<{
             return;
         }
 
+        console.log('Delete button clicked for rule:', ruleId, 'Has id field:', !!rule.id, 'MongoDB _id:', rule._id);
         setRuleToDelete(rule);
         setIsDeleteModalOpen(true);
     };
@@ -516,6 +540,8 @@ const LeadScoringSettings: React.FC<{
             return;
         }
 
+        console.log('Confirming delete for rule:', ruleId, 'MongoDB _id:', ruleToDelete._id);
+
         setIsLoading('delete');
         try {
             await onDelete(ruleId);
@@ -525,6 +551,9 @@ const LeadScoringSettings: React.FC<{
             // But we also need to close the modal immediately
             setIsDeleteModalOpen(false);
             setRuleToDelete(null);
+
+            console.log('Rule deleted successfully, UI updated immediately');
+
         } catch (error) {
             console.error('Failed to delete rule:', error);
         } finally {
@@ -608,6 +637,7 @@ const LeadScoringSettings: React.FC<{
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
+                                            console.log('Delete button clicked for rule:', rule.id);
                                             handleDeleteRule(rule);
                                         }}
                                         disabled={isLoading !== null}
@@ -767,7 +797,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (props) => {
                  )}
                  {activeTab === 'fields' && (
                      <SettingCard title="Custom Fields" description="Create and manage custom fields for your leads." permission={Permission.MANAGE_SETTINGS} hasPermission={hasPermission}>
-                       <CustomFieldsSettings organizationId={currentOrganization.id} onFieldsChange={(fields) => {}} />
+                       <CustomFieldsSettings organizationId={currentOrganization.id} onFieldsChange={(fields) => console.log('Fields updated:', fields)} />
                      </SettingCard>
                  )}
                  {activeTab === 'scoring' && (

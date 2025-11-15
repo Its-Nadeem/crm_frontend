@@ -371,52 +371,19 @@ const MappingStep: React.FC<{
                                             <div className="text-xs text-muted">CSV values will be validated against these options</div>
                                         </div>
                                     )}
-                                    {crmField.id === 'stage' && (() => {
-                                        const [stageSearchTerm, setStageSearchTerm] = useState('');
-                                        const [showStageDropdown, setShowStageDropdown] = useState(false);
-
-                                        const stageOptions = ['New Lead', 'Interested', 'Qualified', 'Proposal Sent', 'Negotiation', 'Closed Won', 'DNP'];
-                                        const filteredStageOptions = stageSearchTerm ? stageOptions.filter(option =>
-                                            option.toLowerCase().includes(stageSearchTerm.toLowerCase())
-                                        ) : stageOptions;
-
-                                        return (
-                                            <div className="space-y-1">
-                                                <div className="font-medium text-xs">Pipeline Stage Selection:</div>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Type stage name..."
-                                                        value={stageSearchTerm}
-                                                        onChange={(e) => {
-                                                            setStageSearchTerm(e.target.value);
-                                                            setShowStageDropdown(true);
-                                                        }}
-                                                        onFocus={() => setShowStageDropdown(true)}
-                                                        onBlur={() => setTimeout(() => setShowStageDropdown(false), 200)}
-                                                        className="w-full bg-background border border-muted px-2 py-1 rounded text-xs focus:border-primary-500 focus:outline-none"
-                                                    />
-                                                    {showStageDropdown && stageSearchTerm && filteredStageOptions.length > 0 && (
-                                                        <div className="absolute top-full left-0 right-0 bg-background border border-muted rounded-b shadow-lg max-h-32 overflow-y-auto z-10">
-                                                            {filteredStageOptions.map(option => (
-                                                                <div
-                                                                    key={option}
-                                                                    className="px-2 py-1 text-xs hover:bg-muted cursor-pointer"
-                                                                    onClick={() => {
-                                                                        setStageSearchTerm(option);
-                                                                        setShowStageDropdown(false);
-                                                                    }}
-                                                                >
-                                                                    {option}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="text-xs text-muted">CSV values will be matched to pipeline stages</div>
+                                    {crmField.id === 'stage' && (
+                                        <div className="space-y-1">
+                                            <div className="font-medium text-xs">Pipeline Stage Selection:</div>
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Type stage name..."
+                                                    className="w-full bg-background border border-muted px-2 py-1 rounded text-xs focus:border-primary-500 focus:outline-none"
+                                                />
                                             </div>
-                                        );
-                                    })()}
+                                            <div className="text-xs text-muted">CSV values will be matched to pipeline stages</div>
+                                        </div>
+                                    )}
                                     {crmField.id === 'source' && (
                                         <div className="space-y-1">
                                             <div className="font-medium text-xs">Lead Source Selection:</div>

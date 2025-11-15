@@ -142,18 +142,7 @@ export const SMSConnectModal: React.FC<SMSConnectModalProps> = ({
                 }
             };
 
-            // Test connection first
-            const smsService = new (await import('../../../backend/services/smsService.js')).default(
-                selectedProvider.id,
-                formData
-            );
-
-            const testResult = await smsService.testConnection();
-            if (!testResult.success) {
-                throw new Error(`Connection test failed: ${testResult.error}`);
-            }
-
-            // Create integration
+            // Create integration (backend will handle connection testing)
             const result = await apiService.createSMSIntegration(integrationData);
 
             if (result.success) {

@@ -417,17 +417,6 @@ class EnhancedApiService {
         });
     }
 
-    async getLeadColumnPreferences(): Promise<any> {
-        return this.requestWithRetry<any>('/leads/column-preferences');
-    }
-
-    async updateLeadColumnPreferences(preferences: { columnOrder: string[], visibleColumns: Record<string, boolean> }): Promise<any> {
-        return this.requestWithRetry<any>('/leads/column-preferences', {
-            method: 'PUT',
-            body: JSON.stringify(preferences),
-        });
-    }
-
     async createTask(taskData: any): Promise<any> {
         return this.requestWithRetry<any>('/tasks', {
             method: 'POST',

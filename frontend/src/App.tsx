@@ -298,17 +298,23 @@ const App: React.FC = () => {
     const fetchStages = useCallback(async () => {
         if (currentOrganization) {
             try {
+                console.log('DEBUG: fetchStages - Fetching stages for organization:', currentOrganization.id);
                 const data = await apiService.getStages(currentOrganization.id);
+                console.log('DEBUG: fetchStages - Fetched data:', data?.length || 0, data?.map((s: any) => ({ id: s.id, name: s.name })));
 
                 if (data && data.length > 0) {
                     setStages(data);
+                    console.log('DEBUG: fetchStages - Successfully set stages in state');
                 } else {
+                    console.warn('DEBUG: fetchStages - No stages returned from API');
                     setStages([]);
                 }
             } catch (error) {
                 console.error('Failed to fetch stages:', error);
                 setStages([]); // Set empty array on error to prevent UI issues
             }
+        } else {
+            console.log('DEBUG: fetchStages - No current organization, skipping fetch');
         }
     }, [currentOrganization]);
 
@@ -316,6 +322,7 @@ const App: React.FC = () => {
         if (currentOrganization) {
             try {
                 const data = await apiService.getTasks(currentOrganization.id);
+                console.log('Fetched tasks:', data);
                 // Ensure _id field is preserved if it exists
                 setTasks(data.map((task: any) => ({ ...task, _id: task._id })));
             } catch (error) {
@@ -476,11 +483,26 @@ const App: React.FC = () => {
         if(currentUser && !tenantContext) {
             // Only set organization from local data if we don't have tenant context
             const org = organizations.find(o => o.id === currentUser.organizationId);
+            console.log('Setting current organization from local data:', {
+                userOrgId: currentUser.organizationId,
+                foundOrg: org ? {
+                    id: org.id,
+                    name: org.name,
+                    subscriptionPlanId: org.subscriptionPlanId,
+                    subscriptionExpiresAt: org.subscriptionExpiresAt
+                } : null,
+                allOrgs: organizations.map(o => ({ id: o.id, plan: o.subscriptionPlanId }))
+            });
             setCurrentOrganization(org || null);
         } else if (tenantContext) {
             // Use organization from tenant context (server-side source of truth)
             const org = organizations.find(o => o.id === tenantContext.orgId);
             if (org) {
+                console.log('Setting current organization from tenant context:', {
+                    orgId: tenantContext.orgId,
+                    orgName: tenantContext.orgName,
+                    plan: tenantContext.plan
+                });
                 setCurrentOrganization(org);
             }
         } else {
@@ -493,8 +515,25 @@ const App: React.FC = () => {
         if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
             const loadOrganizations = async () => {
                 try {
+                    console.log('Loading organization data for user:', currentUser.id);
                     const orgsData = await apiService.getOrganizations();
+                    console.log('Raw organizations data:', orgsData);
                     setOrganizations(orgsData);
+                    console.log('Organizations loaded:', orgsData.length, 'organizations');
+
+                    // Debug: Check org-1 specifically
+                    const org1 = orgsData.find((org: Organization) => org.id === 'org-1');
+                    if (org1) {
+                        console.log('org-1 details:', {
+                            id: org1.id,
+                            name: org1.name,
+                            subscriptionPlanId: org1.subscriptionPlanId,
+                            subscriptionExpiresAt: org1.subscriptionExpiresAt,
+                            manuallyAssignedFeatures: org1.manuallyAssignedFeatures
+                        });
+                    } else {
+                        console.warn('org-1 not found in loaded organizations');
+                    }
                 } catch (error) {
                     console.error('Failed to load organization data:', error);
                 }
@@ -568,6 +607,7 @@ const App: React.FC = () => {
             const now = new Date();
             const expirationDate = new Date(tenantContext.plan.expiresAt);
             if (now > expirationDate) {
+                console.warn('Subscription expired for organization:', tenantContext.orgId);
                 return false; // Subscription expired
             }
 
@@ -591,6 +631,7 @@ const App: React.FC = () => {
         const now = new Date();
         const expirationDate = new Date(currentOrganization.subscriptionExpiresAt);
         if (now > expirationDate) {
+            console.warn('Subscription expired for organization:', currentOrganization.id);
             return false; // Subscription expired
         }
 
@@ -603,10 +644,16 @@ const App: React.FC = () => {
     const userTasks = useMemo(() => tasks.filter(t => t.organizationId === currentOrganization?.id), [tasks, currentOrganization]);
     const userUsers = useMemo(() => {
         if (!currentOrganization?.id) {
+            console.log('🔄 App.tsx: No organization ID, returning empty array');
             return [];
         }
 
         const filtered = users.filter(u => u.organizationId === currentOrganization.id);
+        console.log('🔄 App.tsx: userUsers recomputed');
+        console.log('📊 Total users:', users.length);
+        console.log('🏢 Current org ID:', currentOrganization.id);
+        console.log('👥 Filtered users:', filtered.length);
+        console.log('📋 Filtered user IDs:', filtered.map(u => u.id));
 
         // Always return a new array reference to force React re-renders
         return [...filtered];
@@ -614,6 +661,13 @@ const App: React.FC = () => {
     const userTeams = useMemo(() => teams.filter(t => t.organizationId === currentOrganization?.id), [teams, currentOrganization]);
     const userStages = useMemo(() => {
         const filtered = stages.filter(s => s.organizationId === currentOrganization?.id);
+        console.log('DEBUG: userStages computed:', {
+            totalStages: stages.length,
+            currentOrgId: currentOrganization?.id,
+            filteredCount: filtered.length,
+            filteredStages: filtered.map(s => ({id: s.id, name: s.name})),
+            allStages: stages.map(s => ({id: s.id, name: s.name, orgId: s.organizationId}))
+        });
         return filtered;
     }, [stages, currentOrganization]);
     const userIntegrationLogs = useMemo(() => integrationLogs.filter(l => l.organizationId === currentOrganization?.id), [integrationLogs, currentOrganization]);
@@ -652,19 +706,24 @@ const App: React.FC = () => {
     }, [currentOrganization]);
     const deleteLead = useCallback(async (leadId: string) => {
         try {
+            console.log('Deleting lead:', leadId);
             await apiService.deleteLead(leadId);
 
             // Update local state immediately for better UX
             setLeads(prev => {
                 const updated = prev.filter(l => l.id !== leadId);
+                console.log(`Lead ${leadId} deleted. Leads before: ${prev.length}, after: ${updated.length}`);
                 return updated;
             });
+
+            console.log('Lead deleted successfully');
         } catch (error) {
             console.error('Failed to delete lead:', error);
 
             // Even if API fails, remove from local state for better UX
             setLeads(prev => {
                 const updated = prev.filter(l => l.id !== leadId);
+                console.log(`Lead ${leadId} removed from local state despite API error`);
                 return updated;
             });
         }
@@ -672,17 +731,26 @@ const App: React.FC = () => {
 
     const onUpdateLead = useCallback(async (updatedLead: Lead, oldLead?: Lead) => {
         try {
+            console.log('Updating lead:', updatedLead.id, {
+                hasMongoId: !!updatedLead._id,
+                hasOldLead: !!oldLead,
+                leadName: updatedLead.name
+            });
+
             // If this is an API response (has _id), just update local state
             if (updatedLead._id) {
+                console.log('Updating lead in local state (API response)');
                 setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
                 return true;
             }
 
             // This is a local update that needs API call
+            console.log('Making API call to update lead:', updatedLead.id);
             const updated = await apiService.updateLead(updatedLead.id, updatedLead);
 
             // Update local state with server response
             setLeads(prev => prev.map(l => l.id === updatedLead.id ? updated : l));
+            console.log('Lead updated successfully:', updated.id, updated.name);
             return true; // Indicate success
 
         } catch (error) {
@@ -692,6 +760,7 @@ const App: React.FC = () => {
             // but preserve the original lead data structure
             setLeads(prev => prev.map(l => {
                 if (l.id === updatedLead.id) {
+                    console.log('Updating local state despite API error for better UX');
                     return { ...l, ...updatedLead };
                 }
                 return l;
@@ -704,22 +773,27 @@ const App: React.FC = () => {
 
     const onRefreshLeadById = useCallback(async (leadId: string): Promise<Lead | undefined> => {
         try {
+            console.log('Refreshing lead from backend:', leadId);
             const refreshedLead = await apiService.getLeadById(leadId);
             if (refreshedLead) {
+                console.log('Successfully refreshed lead:', refreshedLead.id);
                 setLeads(prev => {
                     const existingIndex = prev.findIndex(l => l.id === leadId);
                     if (existingIndex >= 0) {
                         // Update existing lead
                         const updated = [...prev];
                         updated[existingIndex] = refreshedLead;
+                        console.log('Updated existing lead in state');
                         return updated;
                     } else {
                         // Add new lead if it doesn't exist
+                        console.log('Adding new lead to state');
                         return [refreshedLead, ...prev];
                     }
                 });
                 return refreshedLead;
             } else {
+                console.log('Lead not found in backend:', leadId);
                 return undefined;
             }
         } catch (error) {
@@ -730,20 +804,26 @@ const App: React.FC = () => {
 
     const onUpdateTask = useCallback(async (updatedTask: Task) => {
         try {
+            console.log('Updating task:', updatedTask);
             // Use _id (MongoDB ID) for the API call, but fall back to id if _id is not available
             const taskId = updatedTask._id || updatedTask.id;
+            console.log('Using taskId for API call:', taskId, '(_id:', updatedTask._id, ', id:', updatedTask.id, ')');
 
             // Optimistically update the UI first
             setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...updatedTask, _id: updatedTask._id } : t));
+            console.log('Optimistically updated local state');
 
             const updated = await apiService.updateTask(taskId, updatedTask);
+            console.log('Task updated successfully:', updated);
 
             // Update with server response
             setTasks(prev => prev.map(t => t.id === updatedTask.id ? updated : t));
+            console.log('Updated with server response');
         } catch (error) {
             console.error('Failed to update task:', error);
             // Revert optimistic update on error
             setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...t, isCompleted: !t.isCompleted } : t));
+            console.log('Reverted optimistic update due to error');
         }
     }, []);
 
@@ -811,6 +891,7 @@ const App: React.FC = () => {
             await apiService.createNote(noteData);
             // Refresh leads data to show the new note immediately
             await fetchLeads();
+            console.log('Note created successfully');
         } catch (error) {
             console.error('Failed to create note:', error);
             throw error;
@@ -857,10 +938,12 @@ const App: React.FC = () => {
                     body: JSON.stringify(user),
                 });
                 setUsers(prev => [...prev, createdUser]);
+                console.log('New user created and added to state:', createdUser.id);
             } else {
                 // For existing users, update via API and update state
                 await apiService.updateUser(user.id.toString(), user);
                 setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+                console.log('User updated in state:', user.id);
             }
         } catch (error) {
             console.error('Failed to save user:', error);
@@ -880,7 +963,9 @@ const App: React.FC = () => {
                 color,
                 organizationId: currentOrganization.id
             };
+            console.log('DEBUG: Creating stage:', newStageData);
             const createdStage = await apiService.createStage(newStageData);
+            console.log('DEBUG: Stage created successfully:', createdStage);
             setStages(prev => [...prev, createdStage]);
         } catch (error) {
             console.error('Failed to create stage:', error);
@@ -900,8 +985,16 @@ const App: React.FC = () => {
                 const updatedStage = { ...stage, [field]: value };
                 // Remove the id field from the request body since it should only be in the URL
                 const { id: stageId, ...stageDataToSend } = updatedStage;
+                console.log('=== FRONTEND: Updating stage ===');
+                console.log('Stage ID:', id);
+                console.log('Field to update:', field);
+                console.log('New value:', value);
+                console.log('Current stage:', stage);
+                console.log('Updated stage:', updatedStage);
+                console.log('Data to send:', stageDataToSend);
                 await apiService.updateStage(id, stageDataToSend);
                 setStages(prev => prev.map(s => s.id === id ? updatedStage : s));
+                console.log('Stage updated successfully');
             } else {
                 console.error('Stage not found in local state:', id);
             }
@@ -918,11 +1011,15 @@ const App: React.FC = () => {
         }
 
         try {
+            console.log('DEBUG: Deleting stage:', id);
             await apiService.deleteStage(id);
 
             // Update stages state - use functional update to ensure we have latest state
             setStages(prev => {
                 const updatedStages = prev.filter(s => s.id !== id);
+                console.log('DEBUG: Stage deleted successfully. Stages before:', prev.length, 'Stages after:', updatedStages.length);
+                console.log('DEBUG: Deleted stage ID:', id);
+                console.log('DEBUG: Remaining stages:', updatedStages.map(s => ({id: s.id, name: s.name})));
                 return updatedStages;
             });
 
@@ -1122,8 +1219,15 @@ const App: React.FC = () => {
 
             let teamData = { ...team };
 
+            if (isNewTeam) {
+                console.log('Creating new team - letting backend generate ID');
+            } else {
+                console.log('Updating existing team with ID:', team.id);
+            }
+
             if(team.id && teams.some(t => t.id === team.id)) {
                 // Update existing team - make API call first
+                console.log('Updating existing team:', team.id);
                 const response = await apiService.requestWithRetry('/settings/teams/' + team.id, {
                     method: 'PUT',
                     body: JSON.stringify({ ...teamData, organizationId: currentOrganization!.id }),
@@ -1135,6 +1239,7 @@ const App: React.FC = () => {
                 // Create new team - make API call first
                 // For new teams, don't include id field in request body
                 const { id, ...teamDataWithoutId } = teamData;
+                console.log('Creating new team, sending data:', { ...teamDataWithoutId, organizationId: currentOrganization!.id });
                 const response = await apiService.requestWithRetry('/settings/teams', {
                     method: 'POST',
                     body: JSON.stringify({ ...teamDataWithoutId, organizationId: currentOrganization!.id }),
@@ -1507,21 +1612,32 @@ const App: React.FC = () => {
     // User deletion function that properly updates state
     const handleDeleteUser = useCallback(async (userId: number) => {
         try {
+            console.log('🚀 App.tsx: STARTING DELETE for userId:', userId);
+
             // Make API call to delete user from backend
             await apiService.requestWithRetry(`/settings/users/${userId}`, {
                 method: 'DELETE'
             });
 
+            console.log('✅ App.tsx: API call successful');
+
             // Update local state AFTER successful API call
             setUsers(prev => {
                 const updated = prev.filter(u => u.id !== userId);
+                console.log('🔄 App.tsx: setUsers called - Before:', prev.length, 'After:', updated.length);
+                console.log('📋 Users before:', prev.map(u => ({ id: u.id, name: u.name })));
+                console.log('📋 Users after:', updated.map(u => ({ id: u.id, name: u.name })));
 
                 // Always return a new array reference to ensure React detects the change
                 return [...updated];
             });
 
+            // Force component re-render by triggering a state change that affects the key
+            console.log('🔄 Forcing component re-render after deletion');
+            // The key change will automatically trigger re-render
+
         } catch (error) {
-            console.error('Failed to delete user:', error);
+            console.error('❌ App.tsx: API call failed:', error);
             // If API call fails, refetch users to restore correct state
             await fetchUsers();
             throw error;
@@ -1721,7 +1837,7 @@ const App: React.FC = () => {
                 savedFilters={userSavedFilters} onSaveFilter={onSaveFilter} onDeleteFilter={async (id) => setSavedFilters(prev => prev.filter(f => f.id !== id))}
                 onBulkAssign={onBulkAssign} onBulkDelete={onBulkDelete}
                 onUpdateLead={(lead) => onUpdateLead(lead)} onUpdateTask={onUpdateTask} onAddTask={onAddTask} onScheduleMessage={onScheduleMessage}
-                onImportLeads={async (imported) => { /* Real import handled by backend */ }}
+                onImportLeads={async (imported) => { console.log('Imported leads', imported); /* Real import handled by backend */ }}
             />} />
             <Route path="/leads/:leadId" element={
                 <StandaloneLeadLayout>

@@ -9,7 +9,6 @@ import { Link } from 'react-router-dom';
 import FilterBuilder from '../ui/FilterBuilder';
 import LeadDetailModal from '../leads/LeadDetailModal';
 import { apiService } from '../../src/services/api';
-import { parsePhoneNumber, formatIncompletePhoneNumber } from 'libphonenumber-js';
 
 // Resizable table components
 const ResizableTable: React.FC<{
@@ -321,7 +320,6 @@ const LeadListPage: React.FC<{
         };
         loadLeads();
     }, []);
-
 
     // Load column preferences from backend on mount
     useEffect(() => {
@@ -685,8 +683,8 @@ const LeadListPage: React.FC<{
             const exportData = dataToExport.map(lead => ({
                 Name: lead.name || '',
                 Email: lead.email || '',
-                Phone: formatPhoneNumber(lead.phone),
-                'Alternate Phone': formatPhoneNumber(lead.alternatePhone),
+                Phone: lead.phone || '',
+                'Alternate Phone': lead.alternatePhone || '',
                 City: lead.city || '',
                 Course: lead.course || '',
                 Company: lead.company || '',
@@ -763,28 +761,6 @@ const LeadListPage: React.FC<{
         return stage?.color || '#6b7280';
     };
 
-    // Format phone number with country code
-    const formatPhoneNumber = (phone: string) => {
-        if (!phone) return '-';
-        try {
-            // If phone already has country code, format it
-            if (phone.startsWith('+')) {
-                const phoneNumber = parsePhoneNumber(phone);
-                return phoneNumber ? phoneNumber.formatInternational() : phone;
-            }
-            // If no country code, assume India (+91) for Indian numbers
-            if (phone.length === 10 && /^\d{10}$/.test(phone)) {
-                const phoneNumber = parsePhoneNumber(phone, 'IN');
-                return phoneNumber ? phoneNumber.formatInternational() : `+91 ${phone}`;
-            }
-            // For other formats, try to parse as is
-            const phoneNumber = parsePhoneNumber(phone);
-            return phoneNumber ? phoneNumber.formatInternational() : phone;
-        } catch (error) {
-            return phone; // Return original if parsing fails
-        }
-    };
-
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -795,7 +771,7 @@ const LeadListPage: React.FC<{
     }
 
     return (
-        <div className="space-y-6 relative">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -1243,11 +1219,14 @@ const LeadListPage: React.FC<{
                                     </tr>
                                 ) : (
                                     paginatedLeads.map((lead) => (
-                                        <tr key={lead.id} className="hover:bg-muted/30">
+                                        <tr key={lead.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => {
+                                            setSelectedLead(lead);
+                                            setShowLeadDetailModal(true);
+                                        }}>
                                             {columnOrder.filter(col => visibleColumns[col] !== false).map(columnId => {
                                                 if (columnId === 'checkbox') {
                                                     return (
-                                                        <td key={columnId} className="px-6 py-4 whitespace-nowrap" style={{cursor: 'default', pointerEvents: 'auto'}} onClick={(e) => e.stopPropagation()}>
+                                                        <td key={columnId} className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                                             <input
                                                                 type="checkbox"
                                                                 checked={selectedLeads.has(lead.id)}
@@ -1260,7 +1239,7 @@ const LeadListPage: React.FC<{
 
                                                 if (columnId === 'actions') {
                                                     return (
-                                                        <td key={columnId} className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" style={{cursor: 'default', pointerEvents: 'auto'}} onClick={(e) => e.stopPropagation()}>
+                                                        <td key={columnId} className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <Link
                                                                     to={`/leads/${lead.id}`}
@@ -1287,109 +1266,88 @@ const LeadListPage: React.FC<{
                                                     );
                                                 }
 
-                                                if (columnId === 'name') {
-                                                    return (
-                                                        <td
-                                                            key={columnId}
-                                                            className="px-6 py-4 whitespace-nowrap text-sm text-on-surface"
-                                                            style={{cursor: 'pointer', pointerEvents: 'auto'}}
-                                                            onClick={() => {
-                                                                setSelectedLead(lead);
-                                                                setShowLeadDetailModal(true);
-                                                            }}
-                                                        >
-                                                            <div className="flex items-center">
-                                                                <div className="flex-shrink-0 h-10 w-10">
-                                                                    <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center">
-                                                                        <span className="text-white font-medium text-sm">
-                                                                            {lead.name?.charAt(0)?.toUpperCase() || '?'}
-                                                                        </span>
+                                                const renderCellContent = (columnId: string, lead: Lead) => {
+                                                    switch (columnId) {
+                                                        case 'name':
+                                                            return (
+                                                                <div className="flex items-center">
+                                                                    <div className="flex-shrink-0 h-10 w-10">
+                                                                        <div className="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center">
+                                                                            <span className="text-white font-medium text-sm">
+                                                                                {lead.name?.charAt(0)?.toUpperCase() || '?'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="ml-4">
+                                                                        <div className="text-sm font-medium text-on-surface">
+                                                                            {lead.name || 'Unnamed Lead'}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="ml-4">
-                                                                    <div className="text-sm font-medium text-on-surface">
-                                                                        {lead.name || 'Unnamed Lead'}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    );
-                                                }
-
-                                                // All other columns are non-clickable
-                                                return (
-                                                    <td
-                                                        key={columnId}
-                                                        className="px-6 py-4 whitespace-nowrap text-sm text-on-surface"
-                                                        style={{cursor: 'default'}}
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            return false;
-                                                        }}
-                                                    >
-                                                        {(() => {
-                                                            switch (columnId) {
-                                                                case 'source':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{typeof lead.source === 'string' ? lead.source : 'Unknown'}</span>;
-                                                                case 'email':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.email || '-'}</span>;
-                                                                case 'phone':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{formatPhoneNumber(lead.phone)}</span>;
-                                                                case 'alternatePhone':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{formatPhoneNumber(lead.alternatePhone)}</span>;
-                                                                case 'city':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.city || '-'}</span>;
-                                                                case 'course':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.course || '-'}</span>;
-                                                                case 'company':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.company || '-'}</span>;
-                                                                case 'stage':
-                                                                    return (
-                                                                        <span
-                                                                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                                                                            style={{
-                                                                                backgroundColor: `${getStageColor(lead.stage)}20`,
-                                                                                color: getStageColor(lead.stage)
-                                                                            }}
-                                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}
-                                                                        >
-                                                                            {getStageName(lead.stage)}
-                                                                        </span>
-                                                                    );
-                                                                case 'followUpStatus':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.followUpStatus || '-'}</span>;
-                                                                case 'score':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.score || 0}</span>;
-                                                                case 'tags':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.tags?.join(', ') || '-'}</span>;
-                                                                case 'assignedToId':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{getUserName(lead.assignedToId)}</span>;
-                                                                case 'dealValue':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.dealValue ? `$${lead.dealValue}` : '-'}</span>;
-                                                                case 'closeDate':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.closeDate ? new Date(lead.closeDate).toLocaleDateString() : '-'}</span>;
-                                                                case 'campaign':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.campaign || '-'}</span>;
-                                                                case 'facebookCampaign':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.facebookCampaign || '-'}</span>;
-                                                                case 'facebookAdset':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.facebookAdset || '-'}</span>;
-                                                                case 'facebookAd':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.facebookAd || '-'}</span>;
-                                                                case 'createdAt':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '-'}</span>;
-                                                                case 'updatedAt':
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '-'}</span>;
-                                                                default:
-                                                                    // Handle custom fields
-                                                                    if (columnId.startsWith('custom_')) {
-                                                                        const fieldId = columnId.replace('custom_', '');
-                                                                        return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>{lead.customFields?.[fieldId] || '-'}</span>;
-                                                                    }
-                                                                    return <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); return false; }}>-</span>;
+                                                            );
+                                                        case 'source':
+                                                            return <span>{typeof lead.source === 'string' ? lead.source : 'Unknown'}</span>;
+                                                        case 'email':
+                                                            return <span>{lead.email || '-'}</span>;
+                                                        case 'phone':
+                                                            return <span>{lead.phone || '-'}</span>;
+                                                        case 'alternatePhone':
+                                                            return <span>{lead.alternatePhone || '-'}</span>;
+                                                        case 'city':
+                                                            return <span>{lead.city || '-'}</span>;
+                                                        case 'course':
+                                                            return <span>{lead.course || '-'}</span>;
+                                                        case 'company':
+                                                            return <span>{lead.company || '-'}</span>;
+                                                        case 'stage':
+                                                            return (
+                                                                <span
+                                                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                                                    style={{
+                                                                        backgroundColor: `${getStageColor(lead.stage)}20`,
+                                                                        color: getStageColor(lead.stage)
+                                                                    }}
+                                                                >
+                                                                    {getStageName(lead.stage)}
+                                                                </span>
+                                                            );
+                                                        case 'followUpStatus':
+                                                            return <span>{lead.followUpStatus || '-'}</span>;
+                                                        case 'score':
+                                                            return <span>{lead.score || 0}</span>;
+                                                        case 'tags':
+                                                            return <span>{lead.tags?.join(', ') || '-'}</span>;
+                                                        case 'assignedToId':
+                                                            return <span>{getUserName(lead.assignedToId)}</span>;
+                                                        case 'dealValue':
+                                                            return <span>{lead.dealValue ? `$${lead.dealValue}` : '-'}</span>;
+                                                        case 'closeDate':
+                                                            return <span>{lead.closeDate ? new Date(lead.closeDate).toLocaleDateString() : '-'}</span>;
+                                                        case 'campaign':
+                                                            return <span>{lead.campaign || '-'}</span>;
+                                                        case 'facebookCampaign':
+                                                            return <span>{lead.facebookCampaign || '-'}</span>;
+                                                        case 'facebookAdset':
+                                                            return <span>{lead.facebookAdset || '-'}</span>;
+                                                        case 'facebookAd':
+                                                            return <span>{lead.facebookAd || '-'}</span>;
+                                                        case 'createdAt':
+                                                            return <span>{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '-'}</span>;
+                                                        case 'updatedAt':
+                                                            return <span>{lead.updatedAt ? new Date(lead.updatedAt).toLocaleDateString() : '-'}</span>;
+                                                        default:
+                                                            // Handle custom fields
+                                                            if (columnId.startsWith('custom_')) {
+                                                                const fieldId = columnId.replace('custom_', '');
+                                                                return <span>{lead.customFields?.[fieldId] || '-'}</span>;
                                                             }
-                                                        })()}
+                                                            return <span>-</span>;
+                                                    }
+                                                };
+
+                                                return (
+                                                    <td key={columnId} className="px-6 py-4 whitespace-nowrap text-sm text-on-surface">
+                                                        {renderCellContent(columnId, lead)}
                                                     </td>
                                                 );
                                             })}

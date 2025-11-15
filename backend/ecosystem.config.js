@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   apps: [{
     name: 'Clienn CRM-backend',
     script: 'server.js',
@@ -6,11 +6,11 @@ export default {
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'production',
-      PORT: 5001
+      PORT: 5000
     },
     env_production: {
       NODE_ENV: 'production',
-      PORT: 5001
+      PORT: 5000
     },
     error_file: './logs/err.log',
     out_file: './logs/out.log',

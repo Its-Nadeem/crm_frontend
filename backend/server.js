@@ -347,7 +347,10 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.VERCEL) {
+  // On Vercel, environment variables are automatically loaded
+  console.log('Running on Vercel, using environment variables from dashboard');
+} else if (process.env.NODE_ENV === 'production') {
   dotenv.config({ path: './.env' });
 } else {
   dotenv.config({ path: './.env.local' });

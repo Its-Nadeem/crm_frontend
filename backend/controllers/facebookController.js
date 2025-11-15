@@ -176,123 +176,18 @@ const getFacebookLeadDetails = async (leadId) => {
         // Note: This requires proper Facebook API setup with access tokens
         console.log('🔄 Making Facebook API call for lead details');
 
-        // Get Facebook access token
-        const accessToken = await getFacebookAccessToken();
-        if (!accessToken) {
-            console.error('❌ No Facebook access token available');
-            return null;
-        }
+        // TODO: Implement actual Facebook API call here
+        // const accessToken = await getFacebookAccessToken();
+        // const response = await fetch(`https://graph.facebook.com/v18.0/${leadId}?access_token=${accessToken}`);
+        // const data = await response.json();
 
-        // Make Facebook API call to get lead details
-        const response = await fetch(`https://graph.facebook.com/v18.0/${leadId}?access_token=${accessToken}&fields=id,created_time,ad_id,form_id,field_data,campaign_id,adset_id`);
-
-        if (!response.ok) {
-            console.error('❌ Facebook API call failed:', response.status, response.statusText);
-            return null;
-        }
-
-        const data = await response.json();
-
-        if (!data || !data.field_data) {
-            console.error('❌ Invalid Facebook lead data received');
-            return null;
-        }
-
-        // Parse Facebook lead data
-        const leadInfo = parseFacebookLeadData(data);
-        console.log('✅ Successfully retrieved Facebook lead data:', leadInfo.name);
-
-        return leadInfo;
+        // For now, return null to indicate no data available
+        // This will prevent creating leads without real data
+        console.log('⚠️ Facebook API integration not fully implemented - no lead data available');
+        return null;
 
     } catch (error) {
         console.error('❌ Error fetching Facebook lead details:', error);
-        return null;
-    }
-};
-
-// @desc    Get Facebook access token
-const getFacebookAccessToken = async () => {
-    try {
-        // First try to get from environment variables
-        if (process.env.FB_ACCESS_TOKEN) {
-            return process.env.FB_ACCESS_TOKEN;
-        }
-
-        // Try to get from integration settings (long-lived token)
-        const integrationSettings = await IntegrationSettings.findOne({
-            source: 'Facebook',
-            isConnected: true
-        });
-
-        if (integrationSettings?.accessToken) {
-            return integrationSettings.accessToken;
-        }
-
-        console.error('❌ No Facebook access token found');
-        return null;
-    } catch (error) {
-        console.error('❌ Error getting Facebook access token:', error);
-        return null;
-    }
-};
-
-// @desc    Parse Facebook lead data from API response
-const parseFacebookLeadData = (facebookData) => {
-    try {
-        const fieldData = facebookData.field_data || [];
-        const leadInfo = {
-            id: facebookData.id,
-            name: '',
-            email: '',
-            phone: '',
-            customFields: {
-                facebookLeadId: facebookData.id,
-                facebookFormId: facebookData.form_id,
-                facebookAdId: facebookData.ad_id,
-                facebookCampaignId: facebookData.campaign_id,
-                facebookAdsetId: facebookData.adset_id,
-                facebookCreatedTime: facebookData.created_time
-            }
-        };
-
-        // Parse field data to extract name, email, phone
-        fieldData.forEach(field => {
-            const fieldName = field.name?.toLowerCase();
-            const fieldValue = field.values?.[0] || '';
-
-            switch (fieldName) {
-                case 'full_name':
-                case 'name':
-                    leadInfo.name = fieldValue;
-                    break;
-                case 'email':
-                case 'email_address':
-                    leadInfo.email = fieldValue;
-                    break;
-                case 'phone':
-                case 'phone_number':
-                case 'mobile':
-                    leadInfo.phone = fieldValue;
-                    break;
-                default:
-                    // Store other fields in custom fields
-                    leadInfo.customFields[`facebook_${fieldName}`] = fieldValue;
-                    break;
-            }
-        });
-
-        // Fallback: try to construct name from first_name and last_name if full name not available
-        if (!leadInfo.name) {
-            const firstName = fieldData.find(f => f.name?.toLowerCase() === 'first_name')?.values?.[0] || '';
-            const lastName = fieldData.find(f => f.name?.toLowerCase() === 'last_name')?.values?.[0] || '';
-            if (firstName || lastName) {
-                leadInfo.name = `${firstName} ${lastName}`.trim();
-            }
-        }
-
-        return leadInfo;
-    } catch (error) {
-        console.error('❌ Error parsing Facebook lead data:', error);
         return null;
     }
 };

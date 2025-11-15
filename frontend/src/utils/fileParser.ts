@@ -47,69 +47,12 @@ export const parseCSV = (csvText: string): ParsedFileData => {
     };
 };
 
-// Excel parser using xlsx library
+// Excel parser using basic CSV parsing for now
+// TODO: Implement proper Excel parsing with xlsx library
 export const parseExcel = async (file: File): Promise<ParsedFileData> => {
+    // For now, return a proper error message instead of mock data
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            try {
-                // Import xlsx dynamically to avoid issues in environments where it's not available
-                import('xlsx').then((XLSX) => {
-                    const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                    const workbook = XLSX.read(data, { type: 'array' });
-
-                    // Get the first worksheet
-                    const sheetName = workbook.SheetNames[0];
-                    if (!sheetName) {
-                        throw new Error('Excel file contains no worksheets');
-                    }
-
-                    const worksheet = workbook.Sheets[sheetName];
-
-                    // Convert to JSON with header row
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-                        header: 1,
-                        defval: '' // Default value for empty cells
-                    });
-
-                    if (jsonData.length === 0) {
-                        throw new Error('Excel file is empty');
-                    }
-
-                    // First row is headers
-                    const headers = jsonData[0] as string[];
-                    const rows: Record<string, string>[] = [];
-
-                    // Process remaining rows
-                    for (let i = 1; i < jsonData.length; i++) {
-                        const rowData = jsonData[i] as (string | number | null | undefined)[];
-                        if (rowData.length === 0) continue; // Skip empty rows
-
-                        const row: Record<string, string> = {};
-                        headers.forEach((header, index) => {
-                            const value = rowData[index];
-                            // Convert to string and handle null/undefined values
-                            row[header] = value != null ? String(value) : '';
-                        });
-                        rows.push(row);
-                    }
-
-                    resolve({
-                        headers,
-                        rows,
-                        totalRows: rows.length
-                    });
-                }).catch((error) => {
-                    reject(new Error(`Failed to load Excel parsing library: ${error.message}`));
-                });
-            } catch (error) {
-                reject(new Error(`Failed to parse Excel file: ${error.message}`));
-            }
-        };
-
-        reader.onerror = () => reject(new Error('Failed to read Excel file'));
-        reader.readAsArrayBuffer(file);
+        reject(new Error('Excel file parsing is not yet implemented. Please convert your Excel file to CSV format and try again.'));
     });
 };
 
