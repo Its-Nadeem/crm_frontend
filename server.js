@@ -318,8 +318,14 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'CliennCRM-backend' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    // Use /tmp for logs in production (Vercel serverless), regular logs in development
+    new winston.transports.File({
+      filename: process.env.NODE_ENV === 'production' ? '/tmp/logs/error.log' : 'logs/error.log',
+      level: 'error'
+    }),
+    new winston.transports.File({
+      filename: process.env.NODE_ENV === 'production' ? '/tmp/logs/combined.log' : 'logs/combined.log'
+    }),
   ],
 });
 
