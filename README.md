@@ -1,0 +1,129 @@
+# Clienn CRM Backend
+
+Production-ready Node.js backend for Clienn CRM with MongoDB integration.
+
+## 🚀 Quick Start
+
+### Development
+```bash
+npm install
+npm run dev
+```
+
+### Production Deployment
+
+1. **Install dependencies:**
+   ```bash
+   npm install --production
+   ```
+
+2. **Set up environment variables:**
+   - Copy `.env` and update with your production values
+   - Ensure MongoDB connection string is correct
+
+3. **Seed the database:**
+   ```bash
+   npm run seed
+   ```
+
+4. **Start production server:**
+   ```bash
+   # Using PM2 (recommended)
+   npm run production
+
+   # Or using bash script
+   chmod +x start-production.sh
+   ./start-production.sh
+   ```
+
+## 📊 PM2 Commands
+
+```bash
+# Check status
+pm2 status
+
+# View logs
+pm2 logs
+
+# Restart all apps
+pm2 restart all
+
+# Stop server
+pm2 stop ecosystem.config.js
+
+# Delete and cleanup
+pm2 delete ecosystem.config.js
+```
+
+## 🔧 Environment Variables
+
+```env
+NODE_ENV=production
+PORT=5000
+MONGODB_URI=your-mongodb-connection-string
+JWT_SECRET=your-jwt-secret
+FRONTEND_URL=https://crm.clienn.com
+```
+
+## 🏗️ Project Structure
+
+```
+backend/
+├── config/           # Database configuration
+├── controllers/      # Route controllers
+├── middleware/       # Custom middleware
+├── models/          # MongoDB models
+├── routes/          # API routes
+├── utils/           # Utility functions
+├── logs/            # Application logs
+├── ecosystem.config.js  # PM2 configuration
+└── server.js        # Main server file
+```
+
+## 🔌 API Endpoints
+
+- `GET /api/health` - Health check
+- `GET /api` - API information
+- `GET /api/dashboard/stats` - Dashboard statistics
+- `GET /api/leads` - Get leads with filtering
+- `GET /api/users` - Get users
+- `GET /api/organizations` - Get organizations
+- `GET /api/stages` - Get stages
+- `GET /api/teams` - Get teams
+- `GET /api/tasks` - Get tasks
+
+## 📝 Logging
+
+Application logs are stored in the `logs/` directory:
+- `combined.log` - All logs
+- `error.log` - Error logs only
+- `out.log` - Standard output
+
+## 🔒 Security Features
+
+- CORS protection
+- Helmet security headers
+- Rate limiting (100 requests per 15 minutes)
+- Input validation
+- Error handling without stack traces in production
+
+## 🚨 Monitoring
+
+- Health check endpoint at `/api/health`
+- Request logging with IP and user agent
+- Error tracking and logging
+- Performance monitoring ready
+
+## 📦 Dependencies
+
+Key production dependencies:
+- `express` - Web framework
+- `mongoose` - MongoDB ODM
+- `helmet` - Security headers
+- `express-rate-limit` - Rate limiting
+- `cors` - Cross-origin requests
+- `winston` - Logging
+- `compression` - Response compression
+- `pm2` - Process management
+
+
