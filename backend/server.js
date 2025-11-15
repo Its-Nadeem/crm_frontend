@@ -7,6 +7,7 @@ import compression from 'compression';
 import winston from 'winston';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 
@@ -196,67 +197,10 @@ const infiniteLoopDetector = (req, res, next) => {
   next();
 };
 
-// Request deduplication middleware - prevents duplicate requests
+// Request deduplication middleware - disabled for app functionality
 const requestDeduplication = (req, res, next) => {
-  // Skip deduplication for GET requests and health checks
-  if (req.method === 'GET' || req.path === '/api/health') {
-    return next();
-  }
-
-  // Create a unique request signature based on method, path, and key body fields
-  const getRequestSignature = (req) => {
-    const keyFields = ['name', 'email', 'phone', 'organizationId', 'leadId', 'userId'];
-    const signatureParts = [req.method, req.path];
-
-    if (req.body && typeof req.body === 'object') {
-      keyFields.forEach(field => {
-        if (req.body[field] !== undefined) {
-          signatureParts.push(`${field}:${req.body[field]}`);
-        }
-      });
-    }
-
-    return signatureParts.join('|');
-  };
-
-  const signature = getRequestSignature(req);
-  const now = Date.now();
-  const windowMs = 30000; // 30 second deduplication window
-
-  // Initialize global deduplication store if it doesn't exist
-  if (!global.requestDeduplicationStore) {
-    global.requestDeduplicationStore = new Map();
-  }
-
-  const store = global.requestDeduplicationStore;
-
-  // Clean old entries
-  for (const [key, timestamp] of store.entries()) {
-    if (now - timestamp > windowMs) {
-      store.delete(key);
-    }
-  }
-
-  // Check if this request was already processed recently
-  if (store.has(signature)) {
-    logger.warn('Duplicate request detected and blocked', {
-      signature,
-      method: req.method,
-      path: req.path,
-      ip: req.ip,
-      userId: req.user?.id
-    });
-
-    return res.status(409).json({
-      success: false,
-      message: 'Duplicate request detected. Please wait before retrying.',
-      retryAfter: Math.ceil((windowMs - (now - store.get(signature))) / 1000)
-    });
-  }
-
-  // Store this request signature
-  store.set(signature, now);
-
+  // Skip ALL deduplication for now to fix app functionality
+  // TODO: Re-enable with proper timing after app is working
   next();
 };
 
@@ -365,6 +309,17 @@ import { ensureSubscriptionPlans } from './utils/subscriptionPlanInitializer.js'
 import { startWebhookProcessor } from './services/webhookProcessor.js';
 import facebookWebhookController from './controllers/facebookWebhookController.js';
 
+// Ensure logs directory exists in production (serverless environment)
+if (process.env.NODE_ENV === 'production') {
+  try {
+    if (!fs.existsSync('/tmp/logs')) {
+      fs.mkdirSync('/tmp/logs', { recursive: true });
+    }
+  } catch (error) {
+    console.error('Failed to create logs directory:', error);
+  }
+}
+
 // Configure Winston logger
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -375,8 +330,14 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'CliennCRM-backend' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    // Use /tmp for logs in production (Vercel serverless), regular logs in development
+    new winston.transports.File({
+      filename: process.env.NODE_ENV === 'production' ? '/tmp/logs/error.log' : 'logs/error.log',
+      level: 'error'
+    }),
+    new winston.transports.File({
+      filename: process.env.NODE_ENV === 'production' ? '/tmp/logs/combined.log' : 'logs/combined.log'
+    }),
   ],
 });
 
@@ -386,7 +347,11 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-dotenv.config({ path: './.env' });
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: './.env' });
+} else {
+  dotenv.config({ path: './.env.local' });
+}
 
 connectDB().then(async () => {
   logger.info('Database connected successfully');
@@ -565,6 +530,8 @@ const corsOptions = {
       'http://localhost:5173',
       'http://localhost:3002',
       'http://localhost:3001',
+      // Allow Vercel deployments
+      'https://*.vercel.app',
       // Allow specific Cloudflare tunnel
       'https://221d037e-00ed-40e9-99f1-3713b3edd7d0.trycloudflare.com',
       'https://*.trycloudflare.com'
@@ -1282,42 +1249,25 @@ Content-Type: application/json
   res.status(200).set('Content-Type', 'text/html').send(html);
 });
 
-// Serve static files from frontend build directory in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('../frontend/dist'));
-
-  // Catch-all handler: send back React's index.html file for client-side routing
-  app.get('*', (req, res) => {
-    // Skip API and webhook routes - these should have been handled above
-    if (req.path.startsWith('/api/') || req.path.startsWith('/webhook/') || req.path.startsWith('/privacy') || req.path.startsWith('/facebook/data-deletion')) {
-      return res.status(404).json({
-        success: false,
-        message: `Route ${req.originalUrl} not found`
-      });
-    }
-
-    res.sendFile(path.resolve('../frontend/dist/index.html'));
-  });
-} else {
-  // In development, just return 404 for non-API routes
-  app.use('*', (req, res) => {
-    // Skip API routes and public pages
-    if (req.path.startsWith('/api/') || req.path.startsWith('/webhook/') ||
-        req.path === '/api-docs' || req.path.startsWith('/privacy') ||
-        req.path.startsWith('/facebook/data-deletion')) {
-      return res.status(404).json({
-        success: false,
-        message: `Route ${req.originalUrl} not found`
-      });
-    }
-
-    // For development, return a simple message
-    res.status(404).json({
+// For separate deployments, backend only serves API routes
+// Frontend is deployed separately and handles its own routing
+app.use('*', (req, res) => {
+  // Skip API routes and public pages
+  if (req.path.startsWith('/api/') || req.path.startsWith('/webhook/') ||
+      req.path === '/api-docs' || req.path.startsWith('/privacy') ||
+      req.path.startsWith('/facebook/data-deletion')) {
+    return res.status(404).json({
       success: false,
-      message: `Route ${req.originalUrl} not found. In development mode, please ensure you're accessing the correct frontend port.`
+      message: `Route ${req.originalUrl} not found`
     });
+  }
+
+  // For non-API routes, return 404 since frontend is deployed separately
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found. This is an API-only server.`
   });
-}
+});
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
@@ -1363,47 +1313,43 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-const PORT = process.env.PORT || 5000;
+// Export app for Vercel (must be at top level)
+export default app;
 
-// Upgrade HTTP server to handle WebSocket connections
-const server = app.listen(PORT, () => {
-  logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+// For local development only, start server with WebSocket support
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
 
-// Handle WebSocket upgrade requests
-server.on('upgrade', (request, socket, head) => {
-  // Check if this is a WebSocket upgrade request for /api/sync
-  if (request.url === '/api/sync') {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-    });
-  } else {
-    // Reject other WebSocket connections
-    socket.destroy();
-  }
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  logger.error('Unhandled Promise Rejection:', {
-    error: err.message,
-    stack: err.stack,
-    promise: promise.toString()
+  // Upgrade HTTP server to handle WebSocket connections
+  const server = app.listen(PORT, () => {
+    logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   });
 
-  // Don't exit the process for unhandled rejections in development
-  // Just log the error and continue
-  if (process.env.NODE_ENV === 'production') {
-    console.error('Unhandled Promise Rejection in production - shutting down gracefully');
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    console.error('Unhandled Promise Rejection in development - continuing...');
-  }
-});
+  // Handle WebSocket upgrade requests
+  server.on('upgrade', (request, socket, head) => {
+    // Check if this is a WebSocket upgrade request for /api/sync
+    if (request.url === '/api/sync') {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    } else {
+      // Reject other WebSocket connections
+      socket.destroy();
+    }
+  });
 
-export default app;
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (err, promise) => {
+    logger.error('Unhandled Promise Rejection:', {
+      error: err.message,
+      stack: err.stack,
+      promise: promise.toString()
+    });
+
+    // Don't exit the process for unhandled rejections in development
+    console.error('Unhandled Promise Rejection in development - continuing...');
+  });
+}
 
 
 
