@@ -1,5 +1,5 @@
 {
-  "name": "Clienn CRM",
+  "name": "clienn-crm-frontend",
   "version": "1.0.0",
   "description": "A full-stack CRM application for managing leads and automating sales and marketing workflows.",
   "main": "src/index.tsx",
