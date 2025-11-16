@@ -1,5 +1,7 @@
 const API_BASE_URL = 'https://crm-backend-orcin-omega.vercel.app/api';
 
+console.log('API_BASE_URL:', API_BASE_URL);
+
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
