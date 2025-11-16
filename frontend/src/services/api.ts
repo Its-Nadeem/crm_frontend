@@ -2,6 +2,8 @@ const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ||
                     (import.meta as any).env?.VITE_API_URL ||
                     `${window.location.origin}/api`;
 
+console.log('API_BASE_URL:', API_BASE_URL);
+
 interface ApiResponse<T> {
   success: boolean;
   data?: T;
