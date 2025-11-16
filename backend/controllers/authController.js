@@ -23,7 +23,7 @@ export const login = async (req, res) => {
         // Find user with case-insensitive search
         const user = await User.findOne({
             email: { $regex: new RegExp(`^${normalizedInputEmail}$`, 'i') }
-        }).populate('organizationId');
+        });
 
         if (user) {
             console.log('✅ User found with case-insensitive search:', user.email);
