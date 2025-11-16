@@ -231,7 +231,7 @@ class EnhancedApiService {
 
     async login(email: string, password: string): Promise<any> {
         try {
-            const response = await fetch(`${API_BASE_URL}/users/login`, {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
