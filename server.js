@@ -7,6 +7,7 @@ import compression from 'compression';
 import winston from 'winston';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 
@@ -308,6 +309,17 @@ import { ensureSubscriptionPlans } from './utils/subscriptionPlanInitializer.js'
 import { startWebhookProcessor } from './services/webhookProcessor.js';
 import facebookWebhookController from './controllers/facebookWebhookController.js';
 
+// Ensure logs directory exists in production (serverless environment)
+if (process.env.NODE_ENV === 'production') {
+  try {
+    if (!fs.existsSync('/tmp/logs')) {
+      fs.mkdirSync('/tmp/logs', { recursive: true });
+    }
+  } catch (error) {
+    console.error('Failed to create logs directory:', error);
+  }
+}
+
 // Configure Winston logger
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -335,7 +347,10 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.VERCEL) {
+  // On Vercel, environment variables are automatically loaded
+  console.log('Running on Vercel, using environment variables from dashboard');
+} else if (process.env.NODE_ENV === 'production') {
   dotenv.config({ path: './.env' });
 } else {
   dotenv.config({ path: './.env.local' });

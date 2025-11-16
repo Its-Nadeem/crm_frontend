@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
+import UserSessionLog from '../models/UserSessionLog.js';
 
 // Login user
 export const login = async (req, res) => {
@@ -22,7 +23,7 @@ export const login = async (req, res) => {
         // Find user with case-insensitive search
         const user = await User.findOne({
             email: { $regex: new RegExp(`^${normalizedInputEmail}$`, 'i') }
-        }).populate('organizationId');
+        });
 
         if (user) {
             console.log('✅ User found with case-insensitive search:', user.email);
@@ -63,6 +64,28 @@ export const login = async (req, res) => {
             process.env.JWT_REFRESH_SECRET || 'refresh_secret',
             { expiresIn: '7d' }
         );
+
+        // Log session start
+        try {
+            const sessionLog = new UserSessionLog({
+                id: `session_${Date.now()}_${user.id}`,
+                userId: user.id,
+                loginTime: new Date().toISOString(),
+                organizationId: organization?.id || organization?._id?.toString() || 'org-1',
+                ipAddress: req.ip,
+                userAgent: req.get('User-Agent'),
+                checkpoints: [{
+                    timestamp: new Date().toISOString(),
+                    event: 'login',
+                    details: { method: 'password' }
+                }]
+            });
+            await sessionLog.save();
+            console.log(`📊 Session logged for user ${user.email}`);
+        } catch (logError) {
+            console.error('Failed to log session:', logError);
+            // Don't fail login if logging fails
+        }
 
         // Get organization data
         const organization = user.organizationId;
