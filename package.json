@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev"
+  },
   "dependencies": {
     "node-fetch": "^3.3.2"
   }
