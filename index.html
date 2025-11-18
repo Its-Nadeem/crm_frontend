@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clienn CRM - AI-Powered Sales & Marketing</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Boost sales, automate workflows, and manage your entire business from one powerful CRM platform. Designed for growing teams, trusted by businesses everywhere." />
+    <meta name="keywords" content="CRM, Sales, Marketing, Automation, AI, Lead Management" />
+    <link rel="canonical" href="https://Clienn CRM.app/" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://Clienn CRM.app/" />
+    <meta property="og:title" content="Clienn CRM - AI-Powered Sales & Marketing" />
+    <meta property="og:description" content="The Smarter Way to Manage Leads, Sales & Growth. Boost sales, automate workflows, and manage your entire business from one powerful CRM platform." />
+    <meta property="og:image" content="https://Clienn CRM.app/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://Clienn CRM.app/" />
+    <meta property="twitter:title" content="Clienn CRM - AI-Powered Sales & Marketing" />
+    <meta property="twitter:description" content="The Smarter Way to Manage Leads, Sales & Growth. Boost sales, automate workflows, and manage your entire business from one powerful CRM platform." />
+    <meta property="twitter:image" content="https://Clienn CRM.app/og-image.png" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Clienn CRM",
+      "description": "The Smarter Way to Manage Leads, Sales & Growth. Boost sales, automate workflows, and manage your entire business from one powerful CRM platform.",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://Clienn CRM.app/",
+      "screenshot": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop",
+      "featureList": [
+        "Unified Leads Dashboard",
+        "AI-Powered Lead Summaries",
+        "Effortless Sales Automation",
+        "Comprehensive Reporting"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "name": "Pro Plan",
+        "price": "99",
+        "priceCurrency": "USD",
+        "description": "For scaling businesses. Includes 20 User Limit, Unlimited Leads, Advanced Automation, Reporting & Analytics."
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "250"
+      },
+      "review": {
+        "@type": "Review",
+        "author": {
+            "@type": "Person",
+            "name": "Sarah Johnson"
+        },
+        "reviewBody": "With Clienn CRM, our conversion rate improved by 32% in 3 months. The AI summaries save my sales team hours every week!",
+        "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5",
+            "bestRating": "5"
+        }
+      }
+    }
+    </script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'primary': {
+                '50': '#eff6ff',
+                '100': '#dbeafe',
+                '200': '#bfdbfe',
+                '300': '#93c5fd',
+                '400': '#60a5fa',
+                '500': '#3b82f6',
+                '600': '#2563eb',
+                '700': '#1d4ed8',
+                '800': '#1e40af',
+                '900': '#1e3a8a',
+                '950': '#172554'
+              },
+              background: 'var(--background)',
+              surface: 'var(--surface)',
+              muted: 'var(--muted)',
+              subtle: 'var(--subtle)',
+              'on-surface': 'var(--on-surface)',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+                'float': 'float 6s ease-in-out infinite',
+                'gradient': 'gradient 8s linear infinite',
+                'infinite-scroll': 'infinite-scroll 40s linear infinite',
+                'infinite-scroll-reverse': 'infinite-scroll-reverse 40s linear infinite',
+                'draw-line': 'draw-line 1s ease-out forwards',
+            },
+            keyframes: {
+                'float': {
+                    '0%': { transform: 'translateY(0px) rotate(0deg)' },
+                    '50%': { transform: 'translateY(-20px) rotate(10deg)' },
+                    '100%': { transform: 'translateY(0px) rotate(0deg)' }
+                },
+                'gradient': {
+                    to: { 'background-position': '200% center' },
+                },
+                'infinite-scroll': {
+                    '0%': { transform: 'translateX(0)' },
+                    '100%': { transform: 'translateX(-50%)' },
+                },
+                'infinite-scroll-reverse': {
+                    '0%': { transform: 'translateX(-50%)' },
+                    '100%': { transform: 'translateX(0)' },
+                },
+                'draw-line': {
+                    '0%': { 'stroke-dashoffset': '1000' },
+                    '100%': { 'stroke-dashoffset': '0' },
+                }
+            },
+          },
+        },
+         plugins: [],
+      };
+    </script>
+    <style>
+        @layer base {
+             :root {
+                --background: #f8fafc;
+                --surface: #ffffff;
+                --muted: #e2e8f0;
+                --subtle: #64748b;
+                --on-surface: #0f172a;
+             }
+            .dark {
+                --background: #020617;
+                --surface: #0f172a;
+                --muted: #334155;
+                --subtle: #94a3b8;
+                --on-surface: #f1f5f9;
+            }
+            html {
+                scroll-behavior: smooth;
+            }
+            body {
+                background-color: var(--background);
+                color: var(--on-surface);
+                transition: background-color 0.3s ease, color 0.3s ease;
+            }
+            /* Accessibility: Reduce motion */
+            @media (prefers-reduced-motion: reduce) {
+              .animate-float, .animate-infinite-scroll, .animate-gradient {
+                animation: none;
+              }
+              .transition-all, .transition, .transition-colors, .transition-transform, .transition-opacity {
+                transition: none;
+              }
+              html {
+                scroll-behavior: auto;
+              }
+            }
+            /* Extend prose for dark mode */
+            .dark .prose-invert {
+                --tw-prose-body: var(--subtle);
+                --tw-prose-headings: var(--on-surface);
+                --tw-prose-lead: var(--subtle);
+                --tw-prose-links: theme('colors.primary.400');
+                --tw-prose-bold: var(--on-surface);
+                --tw-prose-counters: var(--subtle);
+                --tw-prose-bullets: theme('colors.primary.500');
+                --tw-prose-hr: var(--muted);
+                --tw-prose-quotes: var(--on-surface);
+                --tw-prose-quote-borders: var(--muted);
+                --tw-prose-captions: var(--subtle);
+                --tw-prose-code: var(--on-surface);
+                --tw-prose-pre-code: var(--subtle);
+                --tw-prose-pre-bg: var(--background);
+                --tw-prose-th-borders: var(--muted);
+                --tw-prose-td-borders: var(--muted);
+            }
+        }
+        
+        @layer components {
+            .fade-in-section {
+                opacity: 0;
+                transform: translateY(20px);
+                transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            }
+
+            .fade-in-section.is-visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            
+            .fade-in-child.is-visible .anim-child {
+                opacity: 1;
+                transform: translateY(0px);
+            }
+            .anim-child {
+                opacity: 0;
+                transform: translateY(20px);
+                transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            }
+            .anim-child-1 { transition-delay: 0.2s; }
+            .anim-child-2 { transition-delay: 0.4s; }
+            .anim-child-3 { transition-delay: 0.6s; }
+            
+            .draw-line.is-visible .line-path {
+                animation: draw-line 1s ease-out 0.5s forwards;
+                stroke-dasharray: 1000;
+                stroke-dashoffset: 1000;
+            }
+
+            /* Responsive Table styles for card view on mobile */
+            @media (max-width: 767px) {
+                .responsive-table thead {
+                    display: none;
+                }
+                .responsive-table tbody, .responsive-table tr, .responsive-table td {
+                    display: block;
+                }
+                .responsive-table tr {
+                    border: 1px solid var(--muted);
+                    border-radius: 0.75rem;
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                }
+                .responsive-table td {
+                    padding-left: 50%;
+                    text-align: right;
+                    position: relative;
+                    padding-top: 0.5rem;
+                    padding-bottom: 0.5rem;
+                    min-height: 2.5rem; /* Ensure consistent height */
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                }
+                .responsive-table td:before {
+                    content: attr(data-label);
+                    position: absolute;
+                    left: 0.5rem;
+                    width: 45%;
+                    padding-right: 0.5rem;
+                    text-align: left;
+                    font-weight: 600;
+                    color: var(--subtle);
+                }
+            }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.3",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "vite": "https://aistudiocdn.com/vite@^7.1.9",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.4",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "@faker-js/faker": "https://aistudiocdn.com/@faker-js/faker@^10.0.0",
+    "mongoose": "https://aistudiocdn.com/mongoose@^8.19.0",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
+    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "dotenv/": "https://aistudiocdn.com/dotenv@^17.2.3/",
+    "node-fetch": "https://aistudiocdn.com/node-fetch@^3.3.2",
+    "body-parser": "https://aistudiocdn.com/body-parser@^2.2.0",
+    "bcryptjs": "https://aistudiocdn.com/bcryptjs@^3.0.2",
+    "jsonwebtoken": "https://aistudiocdn.com/jsonwebtoken@^9.0.2"
+  }
+}
+</script>
+  <script type="module" src="/src/index.tsx"></script>
+</head>
+  <body class="bg-background text-on-surface">
+    <noscript>
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100vh; font-family: Inter, sans-serif; background-color: #f8fafc; color: #0f172a; padding: 1rem;">
+        <h1>Welcome to Clienn CRM</h1>
+        <p>This application requires JavaScript to run. Please enable it in your browser settings and refresh the page.</p>
+        <p style="max-width: 600px; margin-top: 1rem;">Clienn CRM is the smarter way to manage leads, sales, and growth. Boost sales, automate workflows, and manage your entire business from one powerful CRM platform.</p>
+      </div>
+    </noscript>
+    <div id="root"></div>
+</body>
+</html>
+
+
