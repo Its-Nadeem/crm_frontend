@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://crm-backend-orcin-omega.vercel.app/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 console.log('API_BASE_URL:', API_BASE_URL);
 
@@ -706,6 +706,17 @@ class EnhancedApiService {
     async deleteLeadScoreRule(ruleId: string): Promise<void> {
         return this.requestWithRetry<void>(`/settings/score-rules/${ruleId}`, {
             method: 'DELETE',
+        });
+    }
+
+    async getLeadColumnPreferences(): Promise<any> {
+        return this.requestWithRetry<any>('/leads/column-preferences');
+    }
+
+    async updateLeadColumnPreferences(payload: any): Promise<any> {
+        return this.requestWithRetry<any>('/leads/column-preferences', {
+            method: 'PUT',
+            body: JSON.stringify(payload),
         });
     }
 
