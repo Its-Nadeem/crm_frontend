@@ -356,12 +356,20 @@ if (process.env.VERCEL) {
   dotenv.config({ path: './.env.local' });
 }
 
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL: process.env.VERCEL,
+  MONGODB_URI: process.env.MONGODB_URI ? 'Set' : 'Not set'
+});
+
 connectDB().then(async () => {
+  console.log('Database connected successfully');
   logger.info('Database connected successfully');
 
   // Initialize Gemini AI service (for future use)
   const geminiInitialized = initializeGemini(process.env.GEMINI_API_KEY);
   if (geminiInitialized) {
+    console.log('Gemini AI service initialized');
     logger.info('Gemini AI service initialized');
   }
 
@@ -376,61 +384,67 @@ connectDB().then(async () => {
     runSeeder();
   }
 }).catch(err => {
+  console.error('Database connection failed:', err);
   logger.error('Database connection failed:', err);
   process.exit(1);
 });
 
-const app = express();
+// WebSocket server for real-time sync (only in non-serverless environments)
+let wss;
+if (!process.env.VERCEL) {
+  wss = new WebSocketServer({ noServer: true });
+}
 
-// WebSocket server for real-time sync
-const wss = new WebSocketServer({ noServer: true });
+const app = express();
 
 // Store connected clients by organization
 const clients = new Map();
 
-// WebSocket connection handling
-wss.on('connection', (ws, request) => {
-    console.log('New WebSocket connection established');
+// WebSocket connection handling (only if WebSocket server exists)
+if (wss) {
+    wss.on('connection', (ws, request) => {
+        console.log('New WebSocket connection established');
 
-    let organizationId = null;
+        let organizationId = null;
 
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message.toString());
+        ws.on('message', (message) => {
+            try {
+                const data = JSON.parse(message.toString());
 
-            if (data.type === 'subscribe' && data.organizationId) {
-                organizationId = data.organizationId;
+                if (data.type === 'subscribe' && data.organizationId) {
+                    organizationId = data.organizationId;
 
-                // Add client to organization group
-                if (!clients.has(organizationId)) {
-                    clients.set(organizationId, new Set());
+                    // Add client to organization group
+                    if (!clients.has(organizationId)) {
+                        clients.set(organizationId, new Set());
+                    }
+                    clients.get(organizationId).add(ws);
+
+                    console.log(`Client subscribed to organization: ${organizationId}`);
+                    console.log(`Total clients for ${organizationId}: ${clients.get(organizationId).size}`);
                 }
-                clients.get(organizationId).add(ws);
-
-                console.log(`Client subscribed to organization: ${organizationId}`);
-                console.log(`Total clients for ${organizationId}: ${clients.get(organizationId).size}`);
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
             }
-        } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-        }
-    });
+        });
 
-    ws.on('close', () => {
-        if (organizationId && clients.has(organizationId)) {
-            clients.get(organizationId).delete(ws);
-            console.log(`Client disconnected from organization: ${organizationId}`);
-            console.log(`Remaining clients for ${organizationId}: ${clients.get(organizationId).size}`);
-        }
-    });
+        ws.on('close', () => {
+            if (organizationId && clients.has(organizationId)) {
+                clients.get(organizationId).delete(ws);
+                console.log(`Client disconnected from organization: ${organizationId}`);
+                console.log(`Remaining clients for ${organizationId}: ${clients.get(organizationId).size}`);
+            }
+        });
 
-    ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
+        ws.on('error', (error) => {
+            console.error('WebSocket error:', error);
+        });
     });
-});
+}
 
 // Function to broadcast messages to organization clients
 const broadcastToOrganization = (organizationId, message) => {
-    if (clients.has(organizationId)) {
+    if (wss && clients.has(organizationId)) {
         const orgClients = clients.get(organizationId);
         const messageStr = JSON.stringify(message);
 
