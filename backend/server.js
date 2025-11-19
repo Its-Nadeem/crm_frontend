@@ -386,7 +386,11 @@ connectDB().then(async () => {
 }).catch(err => {
   console.error('Database connection failed:', err);
   logger.error('Database connection failed:', err);
-  process.exit(1);
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  } else {
+    console.error('Database connection failed in Vercel, continuing without database...');
+  }
 });
 
 // WebSocket server for real-time sync (only in non-serverless environments)

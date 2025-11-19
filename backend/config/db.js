@@ -2,6 +2,12 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
   try {
+    // Check if already connected
+    if (mongoose.connection.readyState >= 1) {
+      console.log('✅ MongoDB already connected');
+      return mongoose.connection;
+    }
+
     // Get MongoDB URI from environment
     const mongoUri = process.env.MONGODB_URI;
 
@@ -33,7 +39,7 @@ const connectDB = async () => {
     return conn;
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
-    process.exit(1);
+    throw error; // Let caller handle
   }
 };
 
