@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://crm-backend-orcin-omega.vercel.app/api/$1"
+      "destination": "https://crm-backend-hgwst10sy-its-nadeems-projects.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",
