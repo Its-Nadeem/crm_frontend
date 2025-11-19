@@ -281,33 +281,33 @@ class CircuitBreaker {
     }
   }
 }
-import connectDB from './config/db.js';
-import { runSeeder } from './seeder.js';
+import connectDB from './backend/config/db.js';
+import { runSeeder } from './backend/seeder.js';
 
-import leadRoutes from './routes/leadRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import dataRoutes from './routes/dataRoutes.js';
-import taskRoutes from './routes/taskRoutes.js';
-import noteRoutes from './routes/noteRoutes.js';
-import callRoutes from './routes/callRoutes.js';
-import settingsRoutes from './routes/settingsRoutes.js';
-import marketingRoutes from './routes/marketingRoutes.js';
-import automationRoutes from './routes/automationRoutes.js';
-import superAdminRoutes from './routes/superAdminRoutes.js';
-import apiRoutes from './routes/apiRoutes.js';
-import authRoutes from './routes/authRoutes.js';
-import facebookRoutes from './routes/facebook.js';
-import facebookWebhookRoutes from './routes/facebookRoutes.js';
-import webhookRoutes from './routes/webhookRoutes.js';
-import integrationRoutes from './routes/integrationRoutes.js';
-import oauthRoutes from './routes/oauthRoutes.js';
-import webhookSyncRoutes from './routes/webhookSyncRoutes.js';
-import billingRoutes from './routes/billingRoutes.js';
-import smsRoutes from './routes/smsRoutes.js';
-import { initializeGemini } from './services/geminiService.js';
-import { ensureSubscriptionPlans } from './utils/subscriptionPlanInitializer.js';
-import { startWebhookProcessor } from './services/webhookProcessor.js';
-import facebookWebhookController from './controllers/facebookWebhookController.js';
+import leadRoutes from './backend/routes/leadRoutes.js';
+import userRoutes from './backend/routes/userRoutes.js';
+import dataRoutes from './backend/routes/dataRoutes.js';
+import taskRoutes from './backend/routes/taskRoutes.js';
+import noteRoutes from './backend/routes/noteRoutes.js';
+import callRoutes from './backend/routes/callRoutes.js';
+import settingsRoutes from './backend/routes/settingsRoutes.js';
+import marketingRoutes from './backend/routes/marketingRoutes.js';
+import automationRoutes from './backend/routes/automationRoutes.js';
+import superAdminRoutes from './backend/routes/superAdminRoutes.js';
+import apiRoutes from './backend/routes/apiRoutes.js';
+import authRoutes from './backend/routes/authRoutes.js';
+import facebookRoutes from './backend/routes/facebook.js';
+import facebookWebhookRoutes from './backend/routes/facebookRoutes.js';
+import webhookRoutes from './backend/routes/webhookRoutes.js';
+import integrationRoutes from './backend/routes/integrationRoutes.js';
+import oauthRoutes from './backend/routes/oauthRoutes.js';
+import webhookSyncRoutes from './backend/routes/webhookSyncRoutes.js';
+import billingRoutes from './backend/routes/billingRoutes.js';
+import smsRoutes from './backend/routes/smsRoutes.js';
+import { initializeGemini } from './backend/services/geminiService.js';
+import { ensureSubscriptionPlans } from './backend/utils/subscriptionPlanInitializer.js';
+import { startWebhookProcessor } from './backend/services/webhookProcessor.js';
+import facebookWebhookController from './backend/controllers/facebookWebhookController.js';
 
 // Ensure logs directory exists in production (serverless environment)
 if (process.env.NODE_ENV === 'production') {
@@ -607,10 +607,7 @@ app.use((req, res, next) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    version: '1.0.0'
+    status: 'ok'
   });
 });
 
@@ -1254,7 +1251,7 @@ Content-Type: application/json
 
 // For separate deployments, backend only serves API routes
 // Frontend is deployed separately and handles its own routing
-app.use('*', (req, res) => {
+app.use((req, res) => {
   // Skip API routes and public pages
   if (req.path.startsWith('/api/') || req.path.startsWith('/webhook/') ||
       req.path === '/api-docs' || req.path.startsWith('/privacy') ||
