@@ -143,8 +143,8 @@ const Sidebar: React.FC<{
                 {visibleNavItems.map(item => <NavItem key={item.path} item={item} />)}
             </nav>
             <div className="p-4 border-t border-muted">
-                 <Link to="/settings" onClick={onLinkClick} className={`w-full flex items-center p-3 rounded-lg transition-colors duration-200 text-base ${location.pathname.startsWith('/settings') ? 'bg-primary-600 text-white' : 'text-subtle hover:bg-muted hover:text-on-surface'}`}>
-                     <AppIcons.Settings className="h-6 w-6 mr-3" /> Settings
+                <Link to="/settings" onClick={onLinkClick} className={`w-full flex items-center p-3 rounded-lg transition-colors duration-200 text-base ${location.pathname.startsWith('/settings') ? 'bg-primary-600 text-white' : 'text-subtle hover:bg-muted hover:text-on-surface'}`}>
+                    <AppIcons.Settings className="h-6 w-6 mr-3" /> Settings
                 </Link>
                 <div className="flex items-center mt-4">
                     <img src={currentUser.avatar} alt={currentUser.name} className="h-10 w-10 rounded-full" />
@@ -368,7 +368,7 @@ const App: React.FC = () => {
     const handleLogin = useCallback(async (email: string, pass: string): Promise<string | undefined> => {
         try {
             // Use the apiService.login method instead of apiRequest for proper response handling
-            const response = await fetch(`${API_BASE_URL}/users/login`, {
+            const response = await fetch(`${API_BASE_URL}//auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
