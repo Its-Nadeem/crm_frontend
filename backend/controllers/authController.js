@@ -187,7 +187,7 @@ export const getTenantContext = async (req, res) => {
         };
 
         // Special case for org-1 - always Enterprise
-        if (organization.id === 'org-1' || organization._id?.toString() === 'org-1') {
+        if (organization.id === 'org-1') {
             subscriptionPlan.code = 'plan_enterprise';
             subscriptionPlan.features = [
                 'DASHBOARD', 'LEADS', 'USERS', 'TEAMS', 'TASKS', 'INTEGRATIONS',
