@@ -281,7 +281,7 @@ class CircuitBreaker {
     }
   }
 }
-import connectDB from './config/db.js';
+import { connectDB } from './config/db.js';
 import { runSeeder } from './seeder.js';
 
 import leadRoutes from './routes/leadRoutes.js';
@@ -376,8 +376,8 @@ connectDB().then(async () => {
   // Ensure subscription plans are initialized
   await ensureSubscriptionPlans();
 
-  // Start webhook delivery processor
-  startWebhookProcessor();
+  // Start webhook delivery processor (disabled for now due to timeout issues)
+  // startWebhookProcessor();
 
   // Run seeder after DB connection is established (only in development)
   if (process.env.NODE_ENV === 'development' && process.env.RUN_SEEDER === 'true') {
@@ -546,7 +546,7 @@ const corsOptions = {
 
     const allowedOrigins = [
       'https://crm.clienn.com',
-      'https://clinee.com',
+      'https://clienn.com',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:3002',

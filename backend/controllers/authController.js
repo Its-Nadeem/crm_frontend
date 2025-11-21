@@ -65,13 +65,40 @@ export const login = async (req, res) => {
             { expiresIn: '7d' }
         );
 
+        // Get organization data
+        const organizationId = user.organizationId;
+        let organization = null;
+        try {
+            organization = await Organization.findOne({ id: organizationId });
+        } catch (orgError) {
+            console.error('Failed to fetch organization:', orgError);
+            // Continue with defaults
+        }
+
+        const subscriptionPlan = {
+            code: organization?.subscriptionPlanId || 'plan_free',
+            features: organization?.manuallyAssignedFeatures || ['LEADS', 'USERS'],
+            expiresAt: organization?.subscriptionExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'active'
+        };
+
+        // Special case for org-1 - always Enterprise
+        if (organizationId === 'org-1') {
+            subscriptionPlan.code = 'plan_enterprise';
+            subscriptionPlan.features = [
+                'DASHBOARD', 'LEADS', 'USERS', 'TEAMS', 'TASKS', 'INTEGRATIONS',
+                'AUTOMATION', 'EMAIL', 'SMS', 'WHATSAPP', 'CALLS', 'REPORTS',
+                'TRACKING', 'SETTINGS', 'BLOG', 'CUSTOM_FIELDS', 'WEBHOOKS'
+            ];
+        }
+
         // Log session start
         try {
             const sessionLog = new UserSessionLog({
                 id: `session_${Date.now()}_${user.id}`,
                 userId: user.id,
                 loginTime: new Date().toISOString(),
-                organizationId: organization?.id || organization?._id?.toString() || 'org-1',
+                organizationId: organizationId,
                 ipAddress: req.ip,
                 userAgent: req.get('User-Agent'),
                 checkpoints: [{
@@ -87,27 +114,8 @@ export const login = async (req, res) => {
             // Don't fail login if logging fails
         }
 
-        // Get organization data
-        const organization = user.organizationId;
-        const subscriptionPlan = {
-            code: organization?.subscriptionPlanId || 'plan_free',
-            features: organization?.manuallyAssignedFeatures || ['LEADS', 'USERS'],
-            expiresAt: organization?.subscriptionExpiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-            status: 'active'
-        };
-
-        // Special case for org-1 - always Enterprise
-        if (organization && (organization.id === 'org-1' || organization._id?.toString() === 'org-1')) {
-            subscriptionPlan.code = 'plan_enterprise';
-            subscriptionPlan.features = [
-                'DASHBOARD', 'LEADS', 'USERS', 'TEAMS', 'TASKS', 'INTEGRATIONS',
-                'AUTOMATION', 'EMAIL', 'SMS', 'WHATSAPP', 'CALLS', 'REPORTS',
-                'TRACKING', 'SETTINGS', 'BLOG', 'CUSTOM_FIELDS', 'WEBHOOKS'
-            ];
-        }
-
         const tenantContext = {
-            orgId: organization?.id || organization?._id?.toString() || 'org-1',
+            orgId: organization?.id || organizationId,
             orgName: organization?.name || 'Default Organization',
             plan: subscriptionPlan,
             role: user.role,
@@ -152,8 +160,8 @@ export const getTenantContext = async (req, res) => {
             });
         }
 
-        // Get user with organization data
-        const user = await User.findById(userId).populate('organizationId');
+        // Get user
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -161,7 +169,8 @@ export const getTenantContext = async (req, res) => {
             });
         }
 
-        const organization = user.organizationId;
+        // Get organization data
+        const organization = await Organization.findOne({ id: user.organizationId });
         if (!organization) {
             return res.status(404).json({
                 success: false,
@@ -289,8 +298,8 @@ export const attachTenantContext = async (req, res, next) => {
             });
         }
 
-        // Get user with organization data
-        const user = await User.findById(userId).populate('organizationId');
+        // Get user
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -298,7 +307,8 @@ export const attachTenantContext = async (req, res, next) => {
             });
         }
 
-        const organization = user.organizationId;
+        // Get organization data
+        const organization = await Organization.findOne({ id: user.organizationId });
         if (!organization) {
             return res.status(404).json({
                 success: false,
