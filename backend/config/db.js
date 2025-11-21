@@ -1,49 +1,35 @@
 import mongoose from 'mongoose';
 
-const connectDB = async () => {
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+
+export const connectDB = async () => {
   try {
-    // Check if already connected
+    // If already connected, skip new connection
     if (mongoose.connection.readyState >= 1) {
       console.log('✅ MongoDB already connected');
-      return mongoose.connection;
+      return;
     }
 
-    // Get MongoDB URI from environment
-    const mongoUri = process.env.MONGODB_URI;
-
-    if (!mongoUri) {
-      throw new Error('MONGODB_URI environment variable is not defined');
+    if (!MONGO_URI) {
+      console.error('❌ MONGO_URI / MONGODB_URI is not defined.');
+      return; // Do NOT crash on Vercel
     }
 
     console.log('🔄 Attempting to connect to MongoDB...');
-    console.log('📊 MongoDB URI length:', mongoUri.length);
+    console.log('📊 MongoDB URI length:', MONGO_URI.length);
 
-    // Try connecting with basic options
-    const conn = await mongoose.connect(mongoUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
+    await mongoose.connect(MONGO_URI);
 
-    console.log(`✅ MongoDB Connected Successfully: ${conn.connection.host}`);
+    console.log('✅ MongoDB connected successfully');
+  } catch (err) {
+    console.error('❌ Error connecting to MongoDB:', err);
 
-    // Handle connection events
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-    });
+    // In local dev, crash is OK
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
 
-    mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected');
-    });
-
-    return conn;
-  } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    throw error; // Let caller handle
+    // On Vercel, do NOT exit → just throw for handler to return JSON
+    throw err;
   }
 };
-
-export default connectDB;
-
-
-
